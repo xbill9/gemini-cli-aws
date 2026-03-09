@@ -8,10 +8,16 @@ The repository provides a set of utility scripts to streamline the setup and mai
 
 ## Automation Scripts
 
-### Amazon Linux 2023 Update (`al2023-update`)
-Updates the system packages and installs essential libraries.
+### Linux Update (`linux-update`)
+Detects the OS distribution and runs the appropriate update script (`aws-update` or `debian-update`) followed by the Gemini CLI update.
 ```bash
-./al2023-update
+./linux-update
+```
+
+### AWS / Amazon Linux Update (`aws-update`)
+Updates the system packages using `dnf` and installs essential libraries like `libatomic`.
+```bash
+./aws-update
 ```
 
 ### Debian/Ubuntu Update (`debian-update`)

@@ -9,7 +9,8 @@ Amazon AWS and Google Cloud
 
 This repository contains scripts for updating various Linux environments and tools:
 
-- `al2023-update`: Updates Amazon Linux 2023 packages and installs `libatomic`.
+- `linux-update`: Detects OS (Debian/Ubuntu/Amazon Linux) and runs the corresponding update scripts.
+- `aws-update`: Updates Amazon Linux 2023 packages and installs `libatomic`.
 - `debian-update`: Updates Debian/Ubuntu packages and installs `git`.
 - `gemini-update`: Updates the `@google/gemini-cli` via npm and checks versions of Node.js and Gemini.
 - `nvm-update`: Installs NVM (Node Version Manager) and Node.js version 25.
