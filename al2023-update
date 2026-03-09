@@ -1,3 +1,6 @@
-sudo dnf check-update
-sudo dnf update
-sudo dnf install libatomic
+#!/bin/bash
+set -e
+
+sudo dnf check-update || true # check-update returns 100 if updates are available
+sudo dnf update -y
+sudo dnf install -y libatomic
