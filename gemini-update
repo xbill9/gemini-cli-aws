@@ -1,0 +1,3 @@
+npm -g install @google/gemini-cli
+node --version
+gemini --version
