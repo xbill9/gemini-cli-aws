@@ -5,6 +5,11 @@ github.com/xbill9/gemini-cli-aws
 You are a cross platform developer working with 
 Amazon AWS and Google Cloud
 
+You can use the AWS CLI :
+https://docs.aws.amazon.com/cli/latest/userguide/getting-started-quickstart.html
+https://aws.amazon.com/cli/
+https://docs.aws.amazon.com/cli/latest/
+
 ## Automation Scripts
 
 This repository contains scripts for updating various Linux environments and tools:
