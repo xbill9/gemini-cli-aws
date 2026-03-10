@@ -10,6 +10,18 @@ https://docs.aws.amazon.com/cli/latest/userguide/getting-started-quickstart.html
 https://aws.amazon.com/cli/
 https://docs.aws.amazon.com/cli/latest/
 
+## AWS CLI Tools
+
+You can use the AWS CLI to manage resources across Amazon S3, EC2, and other services.
+
+- **List S3 Buckets**: `aws s3api list-buckets`
+- **List Objects in a Bucket**: `aws s3 ls s3://<bucket-name> --recursive`
+- **Get Bucket Details**: `aws s3api get-bucket-location --bucket <bucket-name>`
+
+### AWS Update Script
+
+- `aws-update`: This script is specifically for Amazon Linux 2023. It updates all packages and installs `libatomic`.
+
 ## Automation Scripts
 
 This repository contains scripts for updating various Linux environments and tools:
