@@ -1,7 +1,7 @@
  {
     "mcpServers": {
-    "hello-https-python": {
-      "httpUrl": "http://127.0.0.1:8080/mcp"
+    "aws-lightsail-python": {
+      "httpUrl": "https://mcp-lightsail-python-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com/mcp"
     }
   }
 }
