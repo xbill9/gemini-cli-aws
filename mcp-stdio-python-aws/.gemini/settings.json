@@ -1,9 +1,9 @@
 {
   "mcpServers": {
-    "hello-stdio-python": {
+    "aws-stdio-python": {
       "command": "python",
       "args": [
-        "$HOME/gemini-cli-codeassist/mcp-stdio-python/main.py"
+        "$HOME/gemini-cli-aws/mcp-stdio-python-aws/main.py"
       ]
     }
   }
