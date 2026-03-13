@@ -1,5 +1,9 @@
 # Makefile for mcp-stdio-python
 
+# Include and export AWS credentials if they exist
+-include .aws_creds
+export
+
 # AWS Lightsail Configuration
 AWS_REGION ?= us-east-1
 SERVICE_NAME ?= mcp-lightsail-python-aws
