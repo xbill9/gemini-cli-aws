@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "mcp-fargate-python-aws": {
+      "httpUrl": "http://98.93.7.2:8080/mcp"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv
+*.log
+README.md
+requirements-dev.txt
+tests/
+test_*.py
+Makefile
+cloudbuild.yaml
+GEMINI.md
+.gemini
+task-definition.json*
+.aws_creds
+.aws
