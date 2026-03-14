@@ -9,54 +9,28 @@ AWS_REGION ?= us-east-1
 SERVICE_NAME ?= mcp-lightsail-python-aws
 IMAGE_NAME ?= mcp-server-image
 
-.PHONY: all install run build test lint format type-check status pull push clean deploy docker-build push-lightsail create-deployment
+.PHONY: all install run build test lint format type-check status git-status lightsail-status endpoint pull push clean deploy docker-build push-lightsail create-deployment
 
-all: install lint type-check
-
-# Target to install dependencies
-install:
-	@echo "Installing dependencies..."
-	@pip install -r requirements.txt
-
-release:
-	@echo "Installing dependencies..."
-	@pip install -r requirements.txt
-	@python main.py
-
-# Target to run the application
-run:
-	@echo "Running the application..."
-	@python main.py
-
-# Target to build the application (placeholder for future use)
-build:
-	@echo "Building the application..."
-	@echo "No build steps defined for this project, currently just runs Python code."
-
-# Target to run tests
-test:
-	@echo "Running tests..."
-	@python -m pytest test_logging.py test_greet.py
-
-# Target to lint the code
-lint:
-	@echo "Linting the code..."
-	@flake8 .
-
-# Target to format the code
-format:
-	@echo "Formatting the code..."
-	@black .
-
-# Target to type-check the code
-type-check:
-	@echo "Type-checking the code..."
-	@mypy .
+# Target to show both git and Lightsail status
+status:  lightsail-status
 
 # Target to show git status
-status:
+git-status:
 	@echo "Showing git status..."
 	@git status
+
+# Target to show AWS Lightsail status
+lightsail-status:
+	@echo "Checking AWS Lightsail service status for $(SERVICE_NAME)..."
+	@aws lightsail get-container-services --service-name $(SERVICE_NAME) --region $(AWS_REGION) \
+		--query 'containerServices[0].{State:state, Power:power, Deployment:currentDeployment.state, URL:publicEndpoint.url}' \
+		--output table
+
+# Target to get the public endpoint URL
+endpoint:
+	@aws lightsail get-container-services --service-name $(SERVICE_NAME) --region $(AWS_REGION) \
+		--query 'containerServices[0].url' \
+		--output text
 
 # Target to pull latest changes from git
 pull:
@@ -80,6 +54,7 @@ cloudrun:
 
 
 # Deploy to Amazon Lightsail
+deploy: lightsail
 lightsail: docker-build push-lightsail create-deployment
 
 push-lightsail:

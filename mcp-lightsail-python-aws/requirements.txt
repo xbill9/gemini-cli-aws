@@ -1,3 +1,4 @@
 fastmcp
 pydantic
 python-json-logger
+flake8

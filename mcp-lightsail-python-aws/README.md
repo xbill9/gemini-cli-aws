@@ -1,62 +1,67 @@
-# MCP HTTP Python Server
+# MCP HTTP Python Server for AWS Lightsail
 
-A simple Model Context Protocol (MCP) server implemented in Python using `FastMCP`. This server is designed to communicate over `HTTP` and serves as a foundational "Hello World" example for Python-based MCP integrations.
+A Model Context Protocol (MCP) server implemented in Python using `FastMCP`, configured for deployment on **Amazon Lightsail Container Services**. This server communicates over `HTTP`.
 
 ## Overview
 
-This project provides a basic MCP server named `hello-world-server` that exposes a single tool: `greet`. It uses `python-json-logger` for structured logging to stderr, ensuring that the stdout stream remains clean for the MCP protocol JSON-RPC messages.
+This project provides an MCP server named `hello-world-server` that exposes a `greet` tool. It uses `python-json-logger` for structured logging to stderr, ensuring that stdout remains reserved for JSON-RPC messages. It is specifically pre-configured with a `Makefile` and Docker setup for rapid deployment to AWS Lightsail.
 
 ## Prerequisites
 
 - **Python 3.10+**
-- `pip` (Python Package Installer)
+- **AWS CLI** configured with appropriate permissions.
+- **lightsailctl** plugin for AWS CLI.
+- **Docker** installed and running.
 
 ## Installation
 
 1.  **Clone the repository:**
     ```bash
     git clone <repository-url>
-    cd mcp-stdio-python
+    cd mcp-lightsail-python-aws
     ```
 
-2.  **Set up a virtual environment (recommended):**
+2.  **Set up credentials:**
+    If you use temporary credentials (e.g., from AWS SSO or a lab environment), run the helper script to export them for the Makefile:
     ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
+    ./save-aws-creds.sh
     ```
 
 3.  **Install dependencies:**
     ```bash
     make install
-    # Or manually:
-    pip install -r requirements.txt
     ```
 
 ## Usage
 
-This server is designed to be executed by an MCP client (like Claude Desktop or a Gemini-powered IDE extension) that handles the HTTP communication.
-
+### Local Running
 To run the server manually:
 ```bash
+make run
+# or
 python main.py
 ```
-The server will start on `http://localhost:5000` by default.
+The server starts on `http://localhost:8080` by default.
 
-### Configuration for MCP Clients
-
-If you are adding this to an MCP client config (e.g., `claude_desktop_config.json`), the configuration would look something like this:
-
-```json
-{
-  "mcpServers": {
-    "python-hello-world": {
-      "url": "http://localhost:5000"
-    }
-  }
-}
+### Deployment to AWS Lightsail
+The `Makefile` handles the full deployment lifecycle:
+```bash
+make deploy
 ```
+This will:
+1. Build the Docker image.
+2. Push the image to your Lightsail container service.
+3. Create a new deployment with the latest image.
 
-*Note: Ensure the server is running before the client attempts to connect.*
+## Monitoring Status
+You can check both your local git status and the remote Lightsail service status:
+```bash
+make status
+```
+Or specifically for Lightsail:
+```bash
+make lightsail-status
+```
 
 ## Tools
 
@@ -66,20 +71,18 @@ If you are adding this to an MCP client config (e.g., `claude_desktop_config.jso
     - `param` (string): The text or name to echo back.
 - **Returns:** The string passed in `param`.
 
-## Development
+## Development Tasks
 
-The project includes a `Makefile` to simplify common development tasks.
-
-- **Install dependencies:** `make install`
-- **Run the server:** `make run`
-- **Run tests:** `make test`
-- **Lint code:** `make lint` (requires `flake8`)
-- **Format code:** `make format` (requires `black`)
-- **Clean artifacts:** `make clean`
+- **`make status`**: Show git and Lightsail service status.
+- **`make test`**: Run unit tests.
+- **`make lint`**: Check code style (flake8).
+- **`make format`**: Auto-format code (black).
+- **`make type-check`**: Run static type analysis (mypy).
+- **`make clean`**: Remove build artifacts and virtual environments.
 
 ## Project Structure
 
-- `main.py`: Entry point using `FastMCP` to define the server and tools.
-- `requirements.txt`: Python dependencies.
-- `Makefile`: Commands for build, test, and maintenance.
-- `test_logging.py`: Unit tests for logging verification.
+- `main.py`: FastMCP server definition and tool implementation.
+- `Makefile`: Centralized automation for dev, test, and AWS deployment.
+- `Dockerfile`: Container definition for Lightsail.
+- `save-aws-creds.sh`: Helper for managing AWS session credentials.

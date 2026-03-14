@@ -18,7 +18,8 @@ This is a **Python-based Model Context Protocol (MCP) server** using the `FastMC
 
 *   `main.py`: The entry point of the application. Initializes the `FastMCP` server ("hello-world-server") and defines tools.
 *   `requirements.txt`: Python dependencies.
-*   `Makefile`: Development shortcuts (test, lint, clean). *Note: Some targets in the Makefile may reference legacy paths and might need adjustment.*
+*   `Makefile`: Development and deployment automation.
+*   `save-aws-creds.sh`: Script for updating `.aws_creds` file used by the Makefile.
 
 ## Development Setup
 
@@ -28,9 +29,14 @@ This is a **Python-based Model Context Protocol (MCP) server** using the `FastMC
     source .venv/bin/activate
     ```
 
-2.  **Install Dependencies:**
+2.  **Update Credentials (if needed):**
     ```bash
-    pip install -r requirements.txt
+    ./save-aws-creds.sh
+    ```
+
+3.  **Install Dependencies:**
+    ```bash
+    make install
     ```
 
 ## Running the Server
@@ -38,10 +44,29 @@ This is a **Python-based Model Context Protocol (MCP) server** using the `FastMC
 The server is configured to run using the `HTTP` transport on `http://localhost:8080`.
 
 ```bash
-python main.py
+make run
 ```
 
-## Deployment
+## Makefile Commands
+
+The `Makefile` is the primary interface for development and deployment tasks:
+
+- **Monitoring:**
+    - `make status`: Shows both git status and AWS Lightsail service status.
+    - `make git-status`: Shows only git status.
+    - `make lightsail-status`: Queries AWS for the current Lightsail container service state.
+- **Deployment:**
+    - `make deploy`: Full cycle: build, push-lightsail, and create-deployment.
+    - `make docker-build`: Build the container image.
+    - `make push-lightsail`: Push the container image to Lightsail.
+    - `make create-deployment`: Create a new deployment using the latest pushed image.
+- **Code Quality:**
+    - `make test`: Run pytest suite.
+    - `make lint`: Run flake8.
+    - `make format`: Run black.
+    - `make type-check`: Run mypy.
+
+## Deployment Environment
 
 The project is configured for deployment to **Amazon Lightsail Container Services**.
 
@@ -50,8 +75,27 @@ The project is configured for deployment to **Amazon Lightsail Container Service
 - `lightsailctl` plugin installed.
 - Docker installed and running.
 
-### Deployment Commands
-- `make docker-build`: Build the Docker image locally.
-- `make deploy`: Build, push the image to Lightsail, and create a new deployment.
+### Lightsail Plugin (lightsailctl) Installation
+
+The `lightsailctl` plugin is required for the AWS CLI to push container images to Lightsail.
+
+1.  **Download the plugin binary:**
+    ```bash
+    # For Linux x86_64
+    sudo curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" -o "/usr/local/bin/lightsailctl"
+
+    # For Linux ARM64
+    # sudo curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-arm64/lightsailctl" -o "/usr/local/bin/lightsailctl"
+    ```
+
+2.  **Make it executable:**
+    ```bash
+    sudo chmod +x /usr/local/bin/lightsailctl
+    ```
+
+3.  **Verify installation:**
+    ```bash
+    lightsailctl --version
+    ```
 
 ## Python MCP Developer Resources
