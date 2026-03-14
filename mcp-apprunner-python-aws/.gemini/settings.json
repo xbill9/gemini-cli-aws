@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "aws-apprunner-python": {
+      "httpUrl": "https://mjpa3argby.us-east-1.awsapprunner.com/mcp"
+    }
+  }
+}
