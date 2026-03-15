@@ -1,0 +1,6 @@
+fastmcp
+pydantic
+python-json-logger
+flake8
+mangum
+uvicorn

@@ -1,0 +1,1 @@
+{"statusCode": 200, "body": "{\"status\":\"healthy\",\"service\":\"mcp-server\"}", "headers": {"content-length": "43", "content-type": "application/json"}, "isBase64Encoded": false}

@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "mcp-lambda-python-aws": {
+      "httpUrl": "https://exoqnsj6ukb6ym36nmzckgg6g40tzpqn.lambda-url.us-east-1.on.aws/mcp"
+    }
+  }
+}
