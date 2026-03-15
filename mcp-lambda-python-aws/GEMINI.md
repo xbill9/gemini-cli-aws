@@ -25,11 +25,11 @@ https://aws.amazon.com/lambda/
 
 ## Project Structure
 
-*   `main.py`: The entry point of the application. Initializes the `FastMCP` server ("hello-world-server"), defines tools, and exports a Mangum `handler` for AWS Lambda.
-*   `requirements.txt`: Python dependencies.
-*   `Makefile`: Development and deployment automation.
-*   `save-aws-creds.sh`: Script for updating `.aws_creds` file used by the Makefile.
-*   `Dockerfile`: Container definition for AWS Lambda.
+*   `main.py`: The entry point of the application. Initializes the `FastMCP` server ("mcp-lambda-python-aws"), defines tools, and exports a Mangum `handler` for AWS Lambda. It uses a custom lifespan to maintain state across Lambda invocations.
+*   `requirements.txt`: Python dependencies including `fastmcp`, `mangum`, `starlette`, and `python-json-logger`.
+*   `Makefile`: Development and deployment automation for AWS Lambda, ECR, and IAM.
+*   `save-aws-creds.sh`: Script for updating `.aws_creds` file used by the Makefile for local deployment.
+*   `Dockerfile`: Container definition based on the AWS Lambda Python base image.
 
 ## Development Setup
 
@@ -62,9 +62,8 @@ make run
 The `Makefile` is the primary interface for development and deployment tasks:
 
 - **Monitoring:**
-    - `make status`: Shows both git status and AWS Lambda function status.
+    - `make status`: Queries AWS for the current Lambda function state.
     - `make git-status`: Shows only git status.
-    - `make lambda-status`: Queries AWS for the current Lambda function state.
     - `make endpoint`: Gets the public Lambda Function URL.
 - **Deployment:**
     - `make deploy`: Full cycle: IAM setup, build, push to ECR, and create/update Lambda function.

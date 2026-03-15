@@ -1,10 +1,12 @@
-# MCP HTTP Python Server for AWS App Runner
+# MCP HTTP Python Server for AWS Lambda
 
-A Model Context Protocol (MCP) server implemented in Python using `FastMCP`, configured for deployment on **AWS App Runner**. This server communicates over `HTTP`.
+A Model Context Protocol (MCP) server implemented in Python using `FastMCP`, configured for deployment on **AWS Lambda** as a container image with **Lambda Function URLs**. This server communicates over `Stateless HTTP`.
 
 ## Overview
 
-This project provides an MCP server named `hello-world-server` that exposes a `greet` tool. It uses `python-json-logger` for structured logging to stderr, ensuring that stdout remains reserved for JSON-RPC messages. It is specifically pre-configured with a `Makefile` and Docker setup for rapid deployment to AWS App Runner via Amazon ECR.
+This project provides an MCP server named `mcp-lambda-python-aws` that exposes a `greet` tool. It uses `python-json-logger` for structured logging to stderr, ensuring that stdout remains reserved for JSON-RPC messages. It is specifically pre-configured with a `Makefile` and Docker setup for rapid deployment to AWS Lambda via Amazon ECR.
+
+The server uses `Mangum` to provide ASGI support for AWS Lambda and `FastMCP`'s `stateless_http=True` mode to handle MCP SSE transport correctly without requiring session affinity.
 
 ## Prerequisites
 
@@ -17,7 +19,7 @@ This project provides an MCP server named `hello-world-server` that exposes a `g
 1.  **Clone the repository:**
     ```bash
     git clone <repository-url>
-    cd mcp-apprunner-python-aws
+    cd mcp-lambda-python-aws
     ```
 
 2.  **Set up credentials:**
@@ -42,25 +44,29 @@ python main.py
 ```
 The server starts on `http://localhost:8080` by default.
 
-### Deployment to AWS App Runner
+### Deployment to AWS Lambda
 The `Makefile` handles the full deployment lifecycle:
 ```bash
 make deploy
 ```
 This will:
-1. Ensure the necessary IAM role (`AppRunnerECRAccessRole`) exists.
+1. Ensure the necessary IAM role (`McpLambdaExecutionRole`) exists.
 2. Build the Docker image.
 3. Login to Amazon ECR and push the image.
-4. Create or update the App Runner service.
+4. Create or update the Lambda function and its Function URL (configured in `BUFFERED` mode for Stateless HTTP).
 
 ## Monitoring Status
-You can check both your local git status and the remote App Runner service status:
+You can check the remote Lambda function status:
 ```bash
 make status
 ```
-Or specifically for App Runner:
+Or specifically for Lambda:
 ```bash
-make apprunner-status
+make lambda-status
+```
+To get the public Function URL:
+```bash
+make endpoint
 ```
 
 ## Tools
@@ -73,15 +79,15 @@ make apprunner-status
 
 ## Development Tasks
 
-- **`make status`**: Show git and App Runner service status.
-- **`make test`**: Run unit tests (if configured).
+- **`make status`**: Show AWS Lambda function status.
+- **`make git-status`**: Show local git status.
 - **`make lint`**: Check code style (flake8).
 - **`make format`**: Auto-format code (black).
 - **`make clean`**: Remove build artifacts and virtual environments.
 
 ## Project Structure
 
-- `main.py`: FastMCP server definition and tool implementation.
-- `Makefile`: Centralized automation for dev, test, and AWS deployment.
-- `Dockerfile`: Container definition for App Runner.
+- `main.py`: FastMCP server definition with Mangum handler for Lambda.
+- `Makefile`: Centralized automation for dev, test, and AWS Lambda deployment.
+- `Dockerfile`: Container definition based on the AWS Lambda Python base image.
 - `save-aws-creds.sh`: Helper for managing AWS session credentials.
