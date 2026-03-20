@@ -19,3 +19,4 @@ Thumbs.db
 venv/
 *.swp
 *.bak
+level_3/.aws_creds
