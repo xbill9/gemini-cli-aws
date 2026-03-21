@@ -1,7 +1,7 @@
 #!/bin/bash
 # Configuration
-SERVICE_NAME="agent1-service"
-IMAGE_NAME="agent1-image"
+SERVICE_NAME="agent-service"
+IMAGE_NAME="agent-image"
 AWS_REGION="us-east-1"
 PROJECT_ID=$(cat ~/project_id.txt) # For Vertex AI
 GOOGLE_CLOUD_LOCATION="us-central1"

@@ -20,4 +20,5 @@ venv/
 *.swp
 *.bak
 level_3/.aws_creds
-adkui/.aws_creds
+adkui-lightsail/.aws_creds
+adkui-fargate/.aws_creds
