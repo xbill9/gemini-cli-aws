@@ -11,12 +11,9 @@ clean:
 	find . -type d -name ".adk" -exec rm -rf {} +
 	@echo "Clean completed."
 
-frontend:
-	cd frontend && npm install && npm run build
 
-mock:
-	python mock/mock_server.py
-
+deploy:
+	./deploy-lightsail.sh
 
 deploy-lightsail:
 	./deploy-lightsail.sh

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Configuration
-SERVICE_NAME="biometric-scout-service"
-IMAGE_NAME="biometric-scout-image"
+SERVICE_NAME="agent1-service"
+IMAGE_NAME="agent1-image"
 AWS_REGION="us-east-1"
 PROJECT_ID=$(cat ~/project_id.txt) # For Vertex AI
 GOOGLE_CLOUD_LOCATION="us-central1"
