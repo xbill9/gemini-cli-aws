@@ -1,0 +1,73 @@
+{
+    "family": "adk-fargate-task",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+        {
+            "name": "adk-ui-container",
+            "image": "106059658660.dkr.ecr.us-east-1.amazonaws.com/adk-ui-image:latest",
+            "portMappings": [
+                {
+                    "containerPort": 8080,
+                    "hostPort": 8080,
+                    "protocol": "tcp"
+                }
+            ],
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8080/\")' || exit 1"
+                ],
+                "interval": 30,
+                "timeout": 5,
+                "retries": 3,
+                "startPeriod": 60
+            },
+            "essential": true,
+            "environment": [
+                {
+                    "name": "PORT",
+                    "value": "8080"
+                },
+                {
+                    "name": "GOOGLE_CLOUD_PROJECT",
+                    "value": "comglitn"
+                },
+                {
+                    "name": "GOOGLE_CLOUD_LOCATION",
+                    "value": "us-central1"
+                },
+                {
+                    "name": "GOOGLE_API_KEY",
+                    "value": "AIzaSyCN6eqI2BrU5Wt6j5rrkUgDIp7jboS_fpI"
+                },
+                {
+                    "name": "GOOGLE_GENAI_USE_VERTEXAI",
+                    "value": "False"
+                },
+                {
+                    "name": "MODEL_ID",
+                    "value": "gemini-2.5-flash"
+                },
+                {
+                    "name": "ADK_DISABLE_LOCAL_STORAGE",
+                    "value": "1"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/adk-fargate-task",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "arn:aws:iam::106059658660:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::106059658660:role/ecsTaskExecutionRole"
+}
