@@ -20,3 +20,4 @@ venv/
 *.swp
 *.bak
 level_3/.aws_creds
+adkui/.aws_creds
