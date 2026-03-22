@@ -56,14 +56,18 @@ NEW_TASK_DEF=$(echo $TASK_DEFINITION | jq '{
 # Update the environment variables in the first container definition
 NEW_TASK_DEF=$(echo $NEW_TASK_DEF | jq --arg PROJECT_ID "$PROJECT_ID" \
                                       --arg GEMINI_API_KEY "$GEMINI_API_KEY" \
+                                      --arg LOCATION "$GOOGLE_CLOUD_LOCATION" \
                                       --arg IMAGE "$ECR_REPO:latest" \
     '.containerDefinitions[0].image = $IMAGE |
-     .containerDefinitions[0].environment |= map(
-        if .name == "GOOGLE_CLOUD_PROJECT" then .value = $PROJECT_ID
-        elif .name == "GOOGLE_API_KEY" then .value = $GEMINI_API_KEY
-        elif .name == "GEMINI_API_KEY" then .value = $GEMINI_API_KEY
-        else . end
-    )')
+     .containerDefinitions[0].environment |= (
+        [
+            {name: "GOOGLE_CLOUD_PROJECT", value: $PROJECT_ID},
+            {name: "GOOGLE_API_KEY", value: $GEMINI_API_KEY},
+            {name: "GEMINI_API_KEY", value: $GEMINI_API_KEY},
+            {name: "GOOGLE_CLOUD_LOCATION", value: $LOCATION},
+            {name: "USE_VERTEX_AI", value: "0"}
+        ] + (map(select(.name != "GOOGLE_CLOUD_PROJECT" and .name != "GOOGLE_API_KEY" and .name != "GEMINI_API_KEY" and .name != "GOOGLE_CLOUD_LOCATION" and .name != "USE_VERTEX_AI")))
+     )')
 
 echo "$NEW_TASK_DEF" > new-task-def.json
 
