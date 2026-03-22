@@ -18,6 +18,7 @@ mock:
 	python mock/mock_server.py
 
 deploy:
+	./save-aws-creds.sh
 	./deploy-lightsail.sh
 
 deploy-lightsail:
@@ -27,3 +28,9 @@ lightsail-status:
 	@aws lightsail get-container-services --service-name biometric-scout-service --region us-east-1 \
 		--query 'containerServices[0].{State:state, Deployment:currentDeployment.state, URL:publicEndpoint.url}' \
 		--output table
+
+endpoint:
+	@aws lightsail get-container-services --service-name biometric-scout-service --region us-east-1 \
+                --query 'containerServices[0].url' \
+                --output text
+
