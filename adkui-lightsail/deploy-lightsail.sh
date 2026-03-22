@@ -52,6 +52,7 @@ aws lightsail create-container-service-deployment \
                 \"VERTEX_AI\": \"FALSE\",
                 \"VERTEX\": \"no\",
                 \"GOOGLE_API_KEY\": \"${GEMINI_API_KEY}\",
+                \"GEMINI_API_KEY\": \"${GEMINI_API_KEY}\",
                 \"MODEL_ID\": \"gemini-2.5-flash-native-audio-preview-12-2025\"
             }
         }

@@ -41,12 +41,11 @@ async def create_image(prompt: str, tool_context: ToolContext) -> Dict[str, Any]
     # Load environment variables. load_dotenv() searches parent directories automatically.
     load_dotenv()
     
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-    location = os.getenv("GOOGLE_CLOUD_LOCATION")
-    model_name = os.getenv("IMAGEN_MODEL", "imagen-3.0-fast-generate-001")
+    api_key = os.getenv("GOOGLE_API_KEY")
+    model_name = os.getenv("IMAGEN_MODEL", "imagen-4.0-fast-generate-001")
 
-    if not all([project_id, location]):
-        error_msg = "Missing GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_LOCATION in environment."
+    if not api_key:
+        error_msg = "Missing GOOGLE_API_KEY in environment."
         logger.error(error_msg)
         return {"status": "error", "message": error_msg}
 
@@ -54,9 +53,7 @@ async def create_image(prompt: str, tool_context: ToolContext) -> Dict[str, Any]
 
     try:
         client = genai.Client(
-            vertexai=True,
-            project=project_id,
-            location=location,
+            api_key=api_key,
         )
 
         # Generate the image

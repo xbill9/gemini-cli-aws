@@ -1,7 +1,6 @@
 import time
 import os
 import io
-import vertexai
 from dotenv import load_dotenv
 import uuid
 from typing import Union, Dict, Any
@@ -22,8 +21,7 @@ logger = logging.getLogger(__name__)
 async def generate_image(prompt: str, image_name: str, tool_context: ToolContext = None, previous_image: str = None) -> Dict[str, Any]:
     """
     Generates an image and saves it to the 'images/' directory.
-    If 'previous_image' is provided, it handles it via the LLM (editing is complex for Imagen-dedicated tools).
-    Otherwise, it uses a dedicated Imagen model for high-fidelity generation.
+    Uses Gemini API with an API key for image generation.
     Args:
         prompt: The text prompt for the operation.
         image_name: The desired name for the output image file (without extension).
@@ -32,25 +30,23 @@ async def generate_image(prompt: str, image_name: str, tool_context: ToolContext
     Returns:
         A dictionary with 'status', 'message', and 'artifact_name'.
     """
-    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
-    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
-    imagen_model = os.environ.get("IMAGEN_MODEL", "imagen-3.0-fast-generate-001")
+    api_key = os.environ.get("GEMINI_API_KEY")
+    imagen_model = os.environ.get("IMAGEN_MODEL", "imagen-4.0-fast-generate-001")
     
     logger.info(f"Starting image generation for: {image_name}")
     logger.debug(f"Prompt: {prompt}")
 
-    if not project_id:
-        logger.error("GOOGLE_CLOUD_PROJECT environment variable is missing.")
+    if not api_key:
+        logger.error("GEMINI_API_KEY environment variable is missing.")
         return {
             "status": "error",
-            "message": "GOOGLE_CLOUD_PROJECT environment variable is not set.",
+            "message": "GEMINI_API_KEY environment variable is not set.",
             "artifact_name": None
         }
     
     try:
-        # Dedicated image models often work better in specific regions like us-central1
-        client = genai.Client(vertexai=True, project=project_id, location=location)
-        logger.info(f"Initialized GenAI client in {location} for project {project_id}")
+        client = genai.Client(api_key=api_key)
+        logger.info("Initialized GenAI client with API key.")
     except Exception as e:
         logger.error(f"Failed to initialize genai.Client: {str(e)}")
         return {
