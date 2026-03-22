@@ -17,6 +17,8 @@ frontend:
 mock:
 	python mock/mock_server.py
 
+deploy:
+	./deploy-lightsail.sh
 
 deploy-lightsail:
 	./deploy-lightsail.sh

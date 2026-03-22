@@ -11,14 +11,17 @@ clean:
 	find . -type d -name ".adk" -exec rm -rf {} +
 	@echo "Clean completed."
 
+frontend:
+	cd frontend && npm install && npm run build
 
-deploy:
-	./deploy-lightsail.sh
+mock:
+	python mock/mock_server.py
+
 
 deploy-lightsail:
 	./deploy-lightsail.sh
 
 lightsail-status:
-	@aws lightsail get-container-services --service-name agent-service --region us-east-1 \
+	@aws lightsail get-container-services --service-name biometric-scout-service --region us-east-1 \
 		--query 'containerServices[0].{State:state, Deployment:currentDeployment.state, URL:publicEndpoint.url}' \
 		--output table
