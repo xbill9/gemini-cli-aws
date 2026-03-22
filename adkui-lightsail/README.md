@@ -1,6 +1,6 @@
 # ADK Comic Pipeline
 
-This repository contains an agentic pipeline for generating comic books, built using the **Google Agent Development Kit (ADK)** and **Vertex AI**.
+This repository contains an agentic pipeline for generating comic books, built using the **Google Agent Development Kit (ADK)** and **Vertex AI**. It supports multi-cloud deployment to both Google Cloud and Amazon Web Services (AWS).
 
 It is based on the solution to the codelab: [Create a low-code agent with ADK visual builder](https://codelabs.developers.google.com/codelabs/create-low-level-agent-with-ADK-visual-builder)
 
@@ -10,17 +10,18 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 - **Intelligent Panelization**: Breaks down scripts into exactly 8 storyboarded panels.
 - **AI Image Synthesis**: Generates 16:9 images for each panel using Vertex AI.
 - **HTML Assembly**: Compiles the final artwork and script into a responsive HTML comic book.
-- **Cloud Deployment**: Scripts included for deploying agents to Google Cloud Run.
+- **Comic Inspection**: Dedicated agent for summarizing and exporting generated comics as UI artifacts.
+- **Multi-Cloud Deployment**: Scripts for deploying agents to **Google Cloud Run** and **Amazon Lightsail**.
 - **Low-Code Interface**: Use the ADK Builder for visual agent development.
 
 ## Project Structure
 
 - `Agent1/`: A basic agent featuring a Google Search tool. Uses `root_agent.yaml`.
 - `Agent2/`: An agent focused on image generation using sub-agents. Uses `root_agent.yaml` and `sub_agent_*.yaml`.
-- `Agent3/`: The primary comic pipeline implementation.
+- `Agent3/`: The primary comic pipeline implementation (Sequential Pipeline).
   - `root_agent.yaml`: The Studio Director agent that manages the pipeline.
   - `comic_pipeline_agent.yaml`: Orchestrates the `SequentialAgent` workflow.
-  - `tools/`: Custom Python tools for image generation and file handling.
+- `Agent4/`: Comic Reader agent for inspecting, summarizing, and exporting generated comics to the ADK UI.
 - `images/`: Directory where intermediate panel images are stored.
 - `output/`: The final output directory containing `comic.html` and assets.
 
@@ -29,6 +30,8 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 - `agent_builder`: Launches the ADK Builder UI (accessible via browser) for visual agent design.
 - `myadk`: A convenience wrapper for the `adk` CLI tool.
 - `comic.sh`: Starts a local web server (port 8080) to view the generated comic.
+- `deploy-lightsail.sh`: Deploys the agent container to Amazon Lightsail.
+- `save-aws-creds.sh`: Exports and saves AWS credentials for deployment scripts.
 - `deploycloudrun.py`: Automates deployment to Google Cloud Run, including IAM and Service Account setup.
 - `fix_comic.py`: Manual utility to regenerate the `comic.html` with a default story (Momotaro).
 - `init.sh`: Comprehensive setup script to configure the GCP project, enable APIs, and install dependencies.
@@ -36,20 +39,23 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 
 ## Makefile Commands
 
-- `make run`: Runs `adk web .` to start the ADK development server.
-- `make web`: Starts `adk web` on all interfaces (`0.0.0.0`).
 - `make clean`: Removes log files, generated images, and temporary cache directories.
-- `make test`: Runs `fix_comic.py` to validate the HTML generation.
-- `make deploy`: Deploys the project using `deploycloudrun.py`.
-- `make comic`: Launches a server specifically for the `output/` directory on port 8000.
+- `make deploy`: Automatically saves AWS credentials and deploys to Amazon Lightsail.
+- `make deploy-lightsail`: Triggers the Lightsail deployment script.
+- `make lightsail-status`: Checks the current state and URL of the Lightsail container service.
+- `make endpoint`: Retrieves the public URL for the deployed Lightsail service.
 
-## How it Works (Agent3)
+## How it Works (Agent3 & Agent4)
 
+### Agent3: Production Pipeline
 The system uses a `Studio Director` agent (`root_agent.yaml`) that delegates to a `SequentialAgent` (`comic_pipeline_agent.yaml`), coordinating four specialized stages:
 1. **Scripting Agent**: Narrative and Character Architect.
 2. **Panelization Agent**: Cinematographer and Storyboarder.
 3. **Image Synthesis Agent**: Technical Artist and Asset Generator.
 4. **Assembly Agent**: Frontend Developer for final packaging.
+
+### Agent4: Reader & Exporter
+This agent provides tools to inspect the `output/` directory, summarize the generated story, and **export the comic as artifacts** (embedded HTML and images) which can be viewed directly within the ADK UI's Artifacts pane.
 
 ## Known Bugs & Workarounds
 
@@ -65,12 +71,19 @@ The system uses a `Studio Director` agent (`root_agent.yaml`) that delegates to 
     ```bash
     adk run Agent3 --input "Create me a comic about a space explorer on a neon planet."
     ```
-4.  **View Results**: Run `./comic.sh` and open `http://localhost:8080` in your browser.
+4.  **View Results**: Run `./comic.sh` and open `http://localhost:8080` in your browser, or use **Agent4** to export the comic to the ADK UI.
 
 ## Deployment
 
-To deploy an agent (default Agent1) to Google Cloud Run:
+### Amazon Lightsail (Recommended)
+To deploy the project as a container to AWS Lightsail:
 ```bash
 make deploy
+```
+
+### Google Cloud Run
+To deploy an agent (default Agent1) to Google Cloud Run:
+```bash
+python3 deploycloudrun.py
 ```
 *Note: Edit `deploycloudrun.py` to change the default target agent.*
