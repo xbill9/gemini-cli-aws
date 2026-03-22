@@ -34,13 +34,44 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 - `init.sh`: Comprehensive setup script to configure the GCP project, enable APIs, and install dependencies.
 - `set_env.sh` / `set_adc.sh`: Helpers to set environment variables and refresh Application Default Credentials.
 
+## AWS Fargate Deployment
+
+The project can also be deployed to **AWS Fargate** using the included scripts.
+
+### Prerequisites
+
+- AWS CLI installed and configured.
+- Docker installed and running.
+- An ECR repository named `adk-ui-image`.
+- An ECS cluster named `adk-fargate-cluster`.
+- An ECS service named `adk-fargate-service`.
+- A Task Definition family named `adk-fargate-task`.
+
+### Deployment Steps
+
+1.  **Save Credentials**: Export your active AWS credentials:
+    ```bash
+    ./save-aws-creds.sh
+    ```
+2.  **Deploy**: Run the Fargate deployment script:
+    ```bash
+    make deploy
+    ```
+    This script will build the Docker image, push it to ECR, register a new task definition revision, and update the ECS service.
+
+3.  **Check Status**:
+    ```bash
+    make status
+    ```
+
 ## Makefile Commands
 
 - `make run`: Runs `adk web .` to start the ADK development server.
 - `make web`: Starts `adk web` on all interfaces (`0.0.0.0`).
 - `make clean`: Removes log files, generated images, and temporary cache directories.
 - `make test`: Runs `fix_comic.py` to validate the HTML generation.
-- `make deploy`: Deploys the project using `deploycloudrun.py`.
+- `make deploy`: Deploys the project to AWS Fargate (via `deploy-fargate.sh`).
+- `make status`: Checks the status of the AWS Fargate service.
 - `make comic`: Launches a server specifically for the `output/` directory on port 8000.
 
 ## How it Works (Agent3)

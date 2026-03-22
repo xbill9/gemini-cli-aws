@@ -44,16 +44,11 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
     *   Assigns necessary IAM roles: `aiplatform.user`, `run.admin`, `logging.logWriter`, `artifactregistry.writer`, `storage.admin`.
 *   `comic.sh`: Launches a local server (`python -m http.server 8080`) in the `output/` directory for immediate viewing of generated comics.
 *   `fix_comic.py`: A utility script used to regenerate `comic.html` using a default story template and `file_writer` tool.
-* `Makefile`: Shortcuts for common tasks:
-    - `make run`/`make web`: Start ADK web UI.
-    - `make clean`: Purge logs and images.
-    - `make test`: Validate comic generation locally.
-    - `make deploy`: Trigger Fargate deployment (alias for `make fargate`).
-    - `make fargate`: Full cycle deployment to AWS Fargate (ECR, ECS, Task Registration).
-    - `make status`: Check ECS service status.
-    - `make endpoint`: Get the public IP of the running Fargate task.
-    - `make logs`: Tail CloudWatch logs for the Fargate service.
-
+*   `Makefile`: Shortcuts for common tasks:
+    *   `make run`/`make web`: Start ADK web UI.
+    *   `make clean`: Purge logs and images.
+    *   `make test`: Validate comic generation locally.
+    *   `make deploy`: Trigger deployment script.
 
 ## Known Bugs & Workarounds
 

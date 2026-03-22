@@ -14,6 +14,13 @@ else
     echo "$PROJECT_ID" > "$HOME/project_id.txt"
 fi
 
+if [ -f "$HOME/gemini.key" ]; then
+    GOOGLE_API_KEY=$(cat "$HOME/gemini.key")
+else
+    read -p "Enter Gemini KEY: " GOOGLE_API_KEY
+    echo "$GOOGLE_API_KEY" > "$HOME/gemini.key"
+fi
+
 gcloud config set project "$PROJECT_ID"
 
 gcloud services enable aiplatform.googleapis.com
@@ -28,11 +35,13 @@ gcloud services enable cloudaicompanion.googleapis.com
 #curl -s https://raw.githubusercontent.com/haren-bh/gcpbillingactivate/main/activate.py | python3
 
 cat <<EOF > .env
-GOOGLE_GENAI_USE_VERTEXAI=1
+GOOGLE_GENAI_USE_VERTEXAI=0
 GOOGLE_CLOUD_PROJECT=$PROJECT_ID
 GOOGLE_CLOUD_LOCATION=us-central1
-IMAGEN_MODEL="imagen-3.0-fast-generate-001"
+IMAGEN_MODEL="imagen-4.0-fast-generate-001"
 GENAI_MODEL="gemini-2.5-flash"
+GOOGLE_API_KEY=$GOOGLE_API_KEY
+GEMINI_API_KEY=$GOOGLE_API_KEY
 EOF
 
 source .env

@@ -1,5 +1,5 @@
-#Go to the output folder
-cd ~/adkui/output
+# Go to the output folder
+cd output
 
-#start local web server
+# Start local web server
 python -m http.server 8080
