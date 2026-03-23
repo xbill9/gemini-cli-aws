@@ -13,6 +13,13 @@ if [ "$PROJECT_ID" == "(unset)" ] || [ -z "$PROJECT_ID" ]; then
     echo "Run 'gcloud config set project [PROJECT_ID]' to configure it."
 fi
 
+if [ -f "$HOME/gemini.key" ]; then
+    GOOGLE_API_KEY=$(cat "$HOME/gemini.key")
+else
+    read -p "Enter Gemini KEY: " GOOGLE_API_KEY
+    echo "$GOOGLE_API_KEY" > "$HOME/gemini.key"
+fi
+
 cat <<EOF > .env
 GOOGLE_GENAI_USE_VERTEXAI=false
 GOOGLE_CLOUD_PROJECT=$PROJECT_ID
