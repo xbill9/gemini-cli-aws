@@ -49,7 +49,7 @@ FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../f
 # ========================================
 # Phase 0: Debugging Logs for Deployment
 # ========================================
-logger.info("=== Lightsail Deployment Debug Info ===")
+logger.info("=== Fargate Deployment Debug Info ===")
 logger.info(f"Current Working Directory: {os.getcwd()}")
 logger.info(f"Python File: {__file__}")
 logger.info(f"PORT: {PORT}")
@@ -296,6 +296,14 @@ async def websocket_endpoint(
         logger.debug("Closing live_request_queue")
         live_request_queue.close()
 
+
+# ========================================
+# Health Check Endpoint
+# ========================================
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 # Serve Static Files (Fallback for SPA)
 # Mount static files if directory exists

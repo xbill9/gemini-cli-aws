@@ -1,3 +1,3 @@
-cd $HOME/way-back-home/level_3/frontend
+cd /home/xbill/gemini-cli-aws/level_3-fargate/frontend
 npm install
 npm run build

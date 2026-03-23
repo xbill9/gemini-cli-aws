@@ -1,2 +1,2 @@
-cd $HOME/way-back-home/level_3/backend/
+cd /home/xbill/gemini-cli-aws/level_3-fargate/backend/
 python app/main.py
