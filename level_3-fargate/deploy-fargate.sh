@@ -72,23 +72,78 @@ aws ecs create-cluster --cluster-name ${CLUSTER_NAME} --region ${AWS_REGION}
 echo "Checking if ECS Service exists..."
 SERVICE_EXISTS=$(aws ecs describe-services --cluster ${CLUSTER_NAME} --services ${SERVICE_NAME} --region ${AWS_REGION} --query 'services[?status==`ACTIVE`].serviceName' --output text)
 
-if [ -z "$SERVICE_EXISTS" ]; then
-    echo "Creating new ECS Service..."
-    # Note: This assumes default VPC and subnets. In a real scenario, you'd specify these.
-    # We try to find the default VPC subnets.
-    DEFAULT_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --region ${AWS_REGION} --query "Vpcs[0].VpcId" --output text)
-    SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=${DEFAULT_VPC_ID}" --region ${AWS_REGION} --query "Subnets[*].SubnetId" --output text | tr '\t' ',')
-    
-    # Simple security group allowing 8080
-    SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=default" "Name=vpc-id,Values=${DEFAULT_VPC_ID}" --region ${AWS_REGION} --query "SecurityGroups[0].GroupId" --output text)
+# Networking Setup for ALB
+DEFAULT_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --region ${AWS_REGION} --query "Vpcs[0].VpcId" --output text)
+SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=${DEFAULT_VPC_ID}" --region ${AWS_REGION} --query "Subnets[*].SubnetId" --output text | tr '\t' ',')
+SUBNET_1=$(echo ${SUBNETS} | cut -d',' -f1)
+SUBNET_2=$(echo ${SUBNETS} | cut -d',' -f2)
 
+# ALB Security Group
+ALB_SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=alb-sg" --region ${AWS_REGION} --query "SecurityGroups[0].GroupId" --output text)
+if [ -z "$ALB_SG_ID" ] || [ "$ALB_SG_ID" == "None" ]; then
+    ALB_SG_ID=$(aws ec2 create-security-group --group-name alb-sg --description "ALB HTTPS Security Group" --vpc-id ${DEFAULT_VPC_ID} --region ${AWS_REGION} --query "GroupId" --output text)
+    aws ec2 authorize-security-group-ingress --group-id ${ALB_SG_ID} --protocol tcp --port 443 --cidr 0.0.0.0/0 --region ${AWS_REGION}
+fi
+
+# Task Security Group
+TASK_SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=fargate-task-sg" --region ${AWS_REGION} --query "SecurityGroups[0].GroupId" --output text)
+if [ -z "$TASK_SG_ID" ] || [ "$TASK_SG_ID" == "None" ]; then
+    TASK_SG_ID=$(aws ec2 create-security-group --group-name fargate-task-sg --description "Fargate Task Security Group" --vpc-id ${DEFAULT_VPC_ID} --region ${AWS_REGION} --query "GroupId" --output text)
+    aws ec2 authorize-security-group-ingress --group-id ${TASK_SG_ID} --protocol tcp --port 8080 --source-group ${ALB_SG_ID} --region ${AWS_REGION}
+fi
+
+# Generate Self-Signed Cert for ALB
+echo "Generating self-signed certificate..."
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=biometric-scout.fargate"
+CERT_ARN=$(aws acm import-certificate --certificate fileb://cert.pem --private-key fileb://key.pem --region ${AWS_REGION} --query "CertificateArn" --output text)
+rm key.pem cert.pem
+
+# Create ALB
+ALB_ARN=$(aws elbv2 describe-load-balancers --names biometric-scout-alb --region ${AWS_REGION} --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null)
+if [ -z "$ALB_ARN" ] || [ "$ALB_ARN" == "None" ]; then
+    ALB_ARN=$(aws elbv2 create-load-balancer --name biometric-scout-alb --subnets ${SUBNET_1} ${SUBNET_2} --security-groups ${ALB_SG_ID} --region ${AWS_REGION} --query "LoadBalancers[0].LoadBalancerArn" --output text)
+fi
+
+# Create Target Group
+TG_ARN=$(aws elbv2 describe-target-groups --names biometric-scout-tg --region ${AWS_REGION} --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null)
+if [ -z "$TG_ARN" ] || [ "$TG_ARN" == "None" ]; then
+    TG_ARN=$(aws elbv2 create-target-group --name biometric-scout-tg --protocol HTTP --port 8080 --vpc-id ${DEFAULT_VPC_ID} --target-type ip --health-check-path /health --region ${AWS_REGION} --query "TargetGroups[0].TargetGroupArn" --output text)
+fi
+
+# Create HTTPS Listener
+LISTENER_EXISTS=$(aws elbv2 describe-listeners --load-balancer-arn ${ALB_ARN} --region ${AWS_REGION} --query "Listeners[?Port==\`443\`].ListenerArn" --output text)
+if [ -z "$LISTENER_EXISTS" ]; then
+    aws elbv2 create-listener --load-balancer-arn ${ALB_ARN} --protocol HTTPS --port 443 --certificates CertificateArn=${CERT_ARN} --default-actions Type=forward,TargetGroupArn=${TG_ARN} --region ${AWS_REGION}
+fi
+
+# Check if existing service has a load balancer
+HAS_LB=$(aws ecs describe-services --cluster ${CLUSTER_NAME} --services ${SERVICE_NAME} --region ${AWS_REGION} --query 'services[0].loadBalancers' --output text)
+
+if [ -z "$SERVICE_EXISTS" ] || [ "$SERVICE_EXISTS" == "None" ]; then
+    echo "Creating new ECS Service with ALB..."
     aws ecs create-service \
         --cluster ${CLUSTER_NAME} \
         --service-name ${SERVICE_NAME} \
         --task-definition ${TASK_FAMILY} \
         --desired-count 1 \
         --launch-type FARGATE \
-        --network-configuration "awsvpcConfiguration={subnets=[${SUBNETS}],securityGroups=[${SG_ID}],assignPublicIp=ENABLED}" \
+        --load-balancers "targetGroupArn=${TG_ARN},containerName=${SERVICE_NAME},containerPort=8080" \
+        --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_1},${SUBNET_2}],securityGroups=[${TASK_SG_ID}],assignPublicIp=ENABLED}" \
+        --region ${AWS_REGION}
+elif [ "$HAS_LB" == "[]" ] || [ -z "$HAS_LB" ]; then
+    echo "Existing service found but no load balancer associated. Re-creating service to add ALB..."
+    aws ecs delete-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --force --region ${AWS_REGION}
+    echo "Waiting for service to be deleted..."
+    aws ecs wait services-inactive --cluster ${CLUSTER_NAME} --services ${SERVICE_NAME} --region ${AWS_REGION}
+    
+    aws ecs create-service \
+        --cluster ${CLUSTER_NAME} \
+        --service-name ${SERVICE_NAME} \
+        --task-definition ${TASK_FAMILY} \
+        --desired-count 1 \
+        --launch-type FARGATE \
+        --load-balancers "targetGroupArn=${TG_ARN},containerName=${SERVICE_NAME},containerPort=8080" \
+        --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_1},${SUBNET_2}],securityGroups=[${TASK_SG_ID}],assignPublicIp=ENABLED}" \
         --region ${AWS_REGION}
 else
     echo "Updating existing ECS Service to use new revision: ${NEW_REVISION_ARN}..."

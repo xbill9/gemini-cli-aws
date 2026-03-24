@@ -40,14 +40,10 @@ fargate-status:
 		--output table 2>/dev/null || echo "No Fargate service found."
 
 endpoint:
-	@echo "--- Fargate Endpoint ---"
-	@TASK_ARN=$$(aws ecs list-tasks --cluster $(CLUSTER_NAME) --service $(SERVICE_NAME) --region $(REGION) --query 'taskArns[0]' --output text); \
-	if [ "$$TASK_ARN" = "None" ] || [ -z "$$TASK_ARN" ]; then echo "No running tasks found."; exit 1; fi; \
-	ENI_ID=$$(aws ecs describe-tasks --cluster $(CLUSTER_NAME) --tasks $$TASK_ARN --region $(REGION) --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text); \
-	if [ "$$ENI_ID" = "None" ] || [ -z "$$ENI_ID" ]; then echo "No network interface found (task may be provisioning)."; exit 1; fi; \
-	PUBLIC_IP=$$(aws ec2 describe-network-interfaces --network-interface-ids $$ENI_ID --region $(REGION) --query 'NetworkInterfaces[0].Association.PublicIp' --output text); \
-	if [ "$$PUBLIC_IP" = "None" ] || [ -z "$$PUBLIC_IP" ]; then echo "No public IP assigned yet."; exit 1; fi; \
-	echo "Application URL: http://$$PUBLIC_IP:8080"
+	@echo "--- Fargate HTTPS Endpoint ---"
+	@ALB_DNS=$$(aws elbv2 describe-load-balancers --names biometric-scout-alb --region $(REGION) --query "LoadBalancers[0].DNSName" --output text 2>/dev/null); \
+	if [ -z "$$ALB_DNS" ] || [ "$$ALB_DNS" == "None" ]; then echo "ALB not found. Deployment may not be complete."; exit 1; fi; \
+	echo "Application URL: https://$$ALB_DNS"
 
 status: fargate-status
 

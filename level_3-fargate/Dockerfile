@@ -16,7 +16,7 @@ RUN npm --prefix frontend run build
 
 # STAGE 2: Build the Python Production Image
 # This stage creates the final, lean container with our Python app and the built frontend.
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -24,6 +24,11 @@ ENV PORT=8080
 
 # Set the final working directory
 WORKDIR /app
+
+# Install dependencies including curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install uv, our fast package manager
 RUN pip install uv
