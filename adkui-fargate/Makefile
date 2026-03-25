@@ -1,6 +1,7 @@
+export AWS_PAGER :=
 # Makefile for ADK Comic Pipeline
 
-.PHONY: clean test deploy run endpoint
+.PHONY: clean test deploy run endpoint status fargate-status aws-destroy
 
 clean:
 	@echo "Cleaning up generated images and temporary files..."
@@ -10,7 +11,6 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type d -name ".adk" -exec rm -rf {} +
 	@echo "Clean completed."
-
 
 deploy:
 	./save-aws-creds.sh
@@ -42,3 +42,11 @@ endpoint:
 	else \
 		echo "No running tasks found."; \
 	fi
+
+aws-destroy:
+	@echo "Destroying AWS resources for adk-fargate..."
+	@aws ecs update-service --cluster adk-fargate-cluster --service adk-fargate-service --desired-count 0 --region us-east-1 2>/dev/null || true
+	@aws ecs delete-service --cluster adk-fargate-cluster --service adk-fargate-service --force --region us-east-1 2>/dev/null || true
+	@aws ecs delete-cluster --cluster adk-fargate-cluster --region us-east-1 2>/dev/null || true
+	@aws ecr delete-repository --repository-name adk-ui-image --region us-east-1 --force 2>/dev/null || true
+	@echo "AWS resources destroyed."

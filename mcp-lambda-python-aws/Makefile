@@ -1,3 +1,4 @@
+export AWS_PAGER :=
 # Makefile for mcp-stdio-python
 
 # Include and export AWS credentials if they exist
@@ -19,7 +20,7 @@ FULL_IMAGE_NAME := $(ECR_REPO_URL):$(IMAGE_TAG)
 LAMBDA_ROLE_NAME := McpLambdaExecutionRole
 LAMBDA_ROLE_ARN := arn:aws:iam::$(AWS_ACCOUNT_ID):role/$(LAMBDA_ROLE_NAME)
 
-.PHONY: all install run build test lint format type-check status git-status lambda-status endpoint pull push clean deploy docker-build ecr-create ecr-login push-ecr lambda-deploy iam-setup
+.PHONY: all install run build test lint format type-check status git-status lambda-status endpoint pull push clean deploy docker-build ecr-create ecr-login push-ecr lambda-deploy iam-setup aws-destroy
 
 all: install run
 
@@ -41,8 +42,7 @@ git-status:
 
 # Target to show AWS Lambda status
 lambda-status:
-	@echo "Checking AWS Lambda status for $(SERVICE_NAME)..."
-	@aws lambda get-function --function-name $(SERVICE_NAME) --region $(AWS_REGION) --query 'Configuration.{Name:FunctionName, Status:State, LastModified:LastModified}' --output table || echo "Lambda function not found."
+	@aws lambda get-function --function-name $(SERVICE_NAME) --region $(AWS_REGION) --query 'Configuration.{Name:FunctionName, Status:State, LastModified:LastModified}' --output table 2>/dev/null || echo "Lambda function not found."
 
 # Target to get the public endpoint URL (Lambda Function URL)
 endpoint:
@@ -141,6 +141,17 @@ create-lambda-function:
 			--principal "*" \
 			--function-url-auth-type NONE; \
 	fi
+
+aws-destroy:
+	@echo "Destroying AWS resources for $(SERVICE_NAME)..."
+	@echo "Deleting Lambda function..."
+	@aws lambda delete-function --function-name $(SERVICE_NAME) --region $(AWS_REGION) 2>/dev/null || true
+	@echo "Deleting ECR repository..."
+	@aws ecr delete-repository --repository-name $(SERVICE_NAME) --region $(AWS_REGION) --force 2>/dev/null || true
+	@echo "Deleting IAM role..."
+	@aws iam detach-role-policy --role-name $(LAMBDA_ROLE_NAME) --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole 2>/dev/null || true
+	@aws iam delete-role --role-name $(LAMBDA_ROLE_NAME) 2>/dev/null || true
+	@echo "AWS resources destroyed."
 
 .PHONY: clean
 clean:

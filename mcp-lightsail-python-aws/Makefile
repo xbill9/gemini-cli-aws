@@ -1,3 +1,4 @@
+export AWS_PAGER :=
 # Makefile for mcp-stdio-python
 
 # Include and export AWS credentials if they exist
@@ -9,7 +10,7 @@ AWS_REGION ?= us-east-1
 SERVICE_NAME ?= mcp-lightsail-python-aws
 IMAGE_NAME ?= mcp-server-image
 
-.PHONY: all install run build test lint format type-check status git-status lightsail-status endpoint pull push clean deploy docker-build push-lightsail create-deployment
+.PHONY: all install run build test lint format type-check status git-status lightsail-status endpoint pull push clean deploy docker-build push-lightsail create-deployment aws-destroy
 
 # Target to show both git and Lightsail status
 status:  lightsail-status
@@ -68,6 +69,11 @@ create-deployment:
 		--service-name $(SERVICE_NAME) \
 		--containers "{\"$(SERVICE_NAME)\":{\"image\":\"$$IMAGE_IDENTIFIER\",\"ports\":{\"8080\":\"HTTP\"}}}" \
 		--public-endpoint "{\"containerName\":\"$(SERVICE_NAME)\",\"containerPort\":8080,\"healthCheck\":{\"path\":\"/health\"}}"
+
+aws-destroy:
+	@echo "Destroying AWS resources for $(SERVICE_NAME)..."
+	@aws lightsail delete-container-service --service-name $(SERVICE_NAME) --region $(AWS_REGION) 2>/dev/null || true
+	@echo "AWS resources destroyed."
 
 .PHONY: clean
 clean:

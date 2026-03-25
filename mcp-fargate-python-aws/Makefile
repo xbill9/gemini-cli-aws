@@ -1,3 +1,4 @@
+export AWS_PAGER :=
 # Makefile for mcp-fargate-python-aws
 
 # Include and export AWS credentials if they exist
@@ -20,7 +21,7 @@ CONTAINER_NAME ?= mcp-server-container
 # Default target
 all: install lint format type-check test docker-build
 
-.PHONY: all install run build test lint format type-check status git-status ecs-status endpoint pull push clean deploy docker-build ecr-login push-ecr register-task update-or-create-service create-cluster create-service create-log-group logs delete-service delete-cluster
+.PHONY: all install run build test lint format type-check status git-status ecs-status endpoint pull push clean deploy docker-build ecr-login push-ecr register-task update-or-create-service create-cluster create-service create-log-group logs delete-service delete-cluster aws-destroy
 
 # Installation and Execution
 install:
@@ -146,12 +147,19 @@ logs:
 
 delete-service:
 	@echo "Deleting service $(ECS_SERVICE)..."
-	@aws ecs update-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --desired-count 0 --region $(AWS_REGION)
-	@aws ecs delete-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --region $(AWS_REGION)
+	@aws ecs update-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --desired-count 0 --region $(AWS_REGION) 2>/dev/null || true
+	@aws ecs delete-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --region $(AWS_REGION) --force 2>/dev/null || true
 
 delete-cluster:
 	@echo "Deleting cluster $(ECS_CLUSTER)..."
-	@aws ecs delete-cluster --cluster $(ECS_CLUSTER) --region $(AWS_REGION)
+	@aws ecs delete-cluster --cluster $(ECS_CLUSTER) --region $(AWS_REGION) 2>/dev/null || true
+
+aws-destroy: delete-service delete-cluster
+	@echo "Deleting ECR repository $(ECR_REPOSITORY)..."
+	@aws ecr delete-repository --repository-name $(ECR_REPOSITORY) --region $(AWS_REGION) --force 2>/dev/null || true
+	@echo "Deleting Log Group /ecs/$(TASK_FAMILY)..."
+	@aws logs delete-log-group --log-group-name /ecs/$(TASK_FAMILY) --region $(AWS_REGION) 2>/dev/null || true
+	@echo "AWS resources destroyed."
 
 .PHONY: clean
 clean:

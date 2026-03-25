@@ -1,6 +1,7 @@
+export AWS_PAGER :=
 # Makefile for ADK Comic Pipeline
 
-.PHONY: clean test deploy run endpoint
+.PHONY: clean test deploy run endpoint lightsail-status status aws-destroy
 
 clean:
 	@echo "Cleaning up generated images and temporary files..."
@@ -29,8 +30,18 @@ lightsail-status:
 		--query 'containerServices[0].{State:state, Deployment:currentDeployment.state, URL:publicEndpoint.url}' \
 		--output table
 
+status:
+	@aws lightsail get-container-services --service-name biometric-scout-service --region us-east-1 \
+		--query 'containerServices[0].{State:state, Deployment:currentDeployment.state, URL:publicEndpoint.url}' \
+		--output table
+
 endpoint:
 	@aws lightsail get-container-services --service-name biometric-scout-service --region us-east-1 \
                 --query 'containerServices[0].url' \
                 --output text
+
+aws-destroy:
+	@echo "Destroying AWS resources for level_3-lightsail..."
+	@aws lightsail delete-container-service --service-name biometric-scout-service --region us-east-1 2>/dev/null || true
+	@echo "AWS resources destroyed."
 

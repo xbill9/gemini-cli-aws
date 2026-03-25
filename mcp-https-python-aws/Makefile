@@ -1,3 +1,4 @@
+export AWS_PAGER :=
 # Makefile for mcp-stdio-python
 
 .PHONY: all install run build test lint format type-check status pull push clean
@@ -58,6 +59,9 @@ pull:
 push:
 	@echo "Pushing changes to git..."
 	@git push
+
+aws-destroy:
+	@echo "No AWS resources to destroy for mcp-https-python-aws."
 
 # Build the Docker image
 docker-build:

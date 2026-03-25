@@ -1,6 +1,7 @@
+export AWS_PAGER :=
+
 SUBDIRS := adkui-fargate \
 	adkui-lightsail \
-	level_3 \
 	level_3-fargate \
 	level_3-lightsail \
 	mcp-apprunner-python-aws \
@@ -10,7 +11,7 @@ SUBDIRS := adkui-fargate \
 	mcp-lightsail-python-aws \
 	mcp-stdio-python-aws
 
-.PHONY: list clean release $(addprefix clean-,$(SUBDIRS)) $(addprefix release-,$(SUBDIRS))
+.PHONY: list clean release aws-destroy $(addprefix clean-,$(SUBDIRS)) $(addprefix release-,$(SUBDIRS)) $(addprefix aws-destroy-,$(SUBDIRS))
 
 list:
 	@echo "Subdirectories:"
@@ -21,6 +22,8 @@ list:
 clean: $(addprefix clean-,$(SUBDIRS))
 
 release: $(addprefix release-,$(SUBDIRS))
+
+aws-destroy: $(addprefix aws-destroy-,$(SUBDIRS))
 
 define clean_task
 clean-$(1):
@@ -62,5 +65,17 @@ release-$(1):
 	fi
 endef
 
+define aws_destroy_task
+aws-destroy-$(1):
+	@echo "----------------------------------------------------------------"
+	@echo "Destroying AWS resources in $(1)..."
+	@if [ -f "$(1)/Makefile" ]; then \
+		$(MAKE) -C $(1) aws-destroy || echo "Make aws-destroy failed or not defined in $(1), continuing..."; \
+	else \
+		echo "No Makefile found in $(1). Skipping."; \
+	fi
+endef
+
 $(foreach dir,$(SUBDIRS),$(eval $(call clean_task,$(dir))))
 $(foreach dir,$(SUBDIRS),$(eval $(call release_task,$(dir))))
+$(foreach dir,$(SUBDIRS),$(eval $(call aws_destroy_task,$(dir))))

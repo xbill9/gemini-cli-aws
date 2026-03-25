@@ -1,3 +1,4 @@
+export AWS_PAGER :=
 # Makefile for mcp-stdio-python
 
 # Include and export AWS credentials if they exist
@@ -19,7 +20,7 @@ FULL_IMAGE_NAME := $(ECR_REPO_URL):$(IMAGE_TAG)
 APPRUNNER_ACCESS_ROLE_NAME := AppRunnerECRAccessRole
 APPRUNNER_ACCESS_ROLE_ARN := arn:aws:iam::$(AWS_ACCOUNT_ID):role/$(APPRUNNER_ACCESS_ROLE_NAME)
 
-.PHONY: all install run build test lint format type-check status git-status apprunner-status endpoint pull push clean deploy docker-build ecr-create ecr-login push-ecr create-apprunner-service iam-setup
+.PHONY: all install run build test lint format type-check status git-status apprunner-status endpoint pull push clean deploy docker-build ecr-create ecr-login push-ecr create-apprunner-service iam-setup aws-destroy
 
 all: install run
 
@@ -113,6 +114,17 @@ create-apprunner-service:
 			--source-configuration "{\"ImageRepository\":{\"ImageIdentifier\":\"$(FULL_IMAGE_NAME)\",\"ImageConfiguration\":{\"Port\":\"8080\"},\"ImageRepositoryType\":\"ECR\"},\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$(APPRUNNER_ACCESS_ROLE_ARN)\"}}" \
 			--health-check-configuration "{\"Protocol\":\"HTTP\",\"Path\":\"/health\",\"Interval\":10,\"Timeout\":5,\"HealthyThreshold\":2,\"UnhealthyThreshold\":5}"; \
 	fi
+
+aws-destroy:
+	@echo "Destroying AWS resources for $(SERVICE_NAME)..."
+	@SERVICE_ARN=$$(aws apprunner list-services --region $(AWS_REGION) --query 'ServiceSummaryList[?ServiceName==`$(SERVICE_NAME)`].ServiceArn' --output text) && \
+	if [ -n "$$SERVICE_ARN" ] && [ "$$SERVICE_ARN" != "None" ]; then \
+		echo "Deleting App Runner service $$SERVICE_ARN..."; \
+		aws apprunner delete-service --service-arn "$$SERVICE_ARN" --region $(AWS_REGION) || true; \
+	fi
+	@echo "Deleting ECR repository $(SERVICE_NAME)..."
+	@aws ecr delete-repository --repository-name $(SERVICE_NAME) --region $(AWS_REGION) --force 2>/dev/null || true
+	@echo "AWS resources destroyed."
 
 .PHONY: clean
 clean:
