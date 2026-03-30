@@ -27,3 +27,7 @@ adkui-lightsail/.aws_creds
 adkui-fargate/.aws_creds
 level_3-lightsail/.requirements_installed
 level_3-fargate/task-definition.json
+
+level_3-fargate/.requirements_installed
+level_3-fargate/backend/app/biometric_agent/.adk/
+level_3-fargate/backend/app/biometric_agent/__pycache__/

@@ -43,7 +43,7 @@ fargate-status:
 endpoint:
 	@echo "--- Fargate HTTPS Endpoint ---"
 	@ALB_DNS=$$(aws elbv2 describe-load-balancers --names biometric-scout-alb --region $(REGION) --query "LoadBalancers[0].DNSName" --output text 2>/dev/null); \
-	if [ -z "$$ALB_DNS" ] || [ "$$ALB_DNS" == "None" ]; then echo "ALB not found. Deployment may not be complete."; exit 1; fi; \
+	if [ -z "$$ALB_DNS" ] || [ "$$ALB_DNS" = "None" ]; then echo "ALB not found. Deployment may not be complete."; exit 1; fi; \
 	echo "Application URL: https://$$ALB_DNS"
 
 status: fargate-status

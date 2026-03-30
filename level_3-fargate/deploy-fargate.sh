@@ -66,7 +66,7 @@ NEW_REVISION_ARN=$(aws ecs register-task-definition \
     --query 'taskDefinition.taskDefinitionArn' --output text)
 
 echo "Ensuring ECS Cluster exists..."
-aws ecs describe-clusters --clusters ${CLUSTER_NAME} --region ${AWS_REGION} | grep -q "ACTIVE" || \
+aws ecs describe-clusters --clusters ${CLUSTER_NAME} --region ${AWS_REGION} --query 'clusters[?status==`ACTIVE`].status' --output text | grep -q "ACTIVE" || \
 aws ecs create-cluster --cluster-name ${CLUSTER_NAME} --region ${AWS_REGION}
 
 echo "Checking if ECS Service exists..."
