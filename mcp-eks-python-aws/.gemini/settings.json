@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "mcp-eks-python-aws": {
+      "httpUrl": "http://a8acf5c3ad24348c89537b575c29b32f-1627118381.us-east-1.elb.amazonaws.com/mcp"
+    }
+  }
+}

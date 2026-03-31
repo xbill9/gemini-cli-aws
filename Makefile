@@ -1,10 +1,16 @@
 export AWS_PAGER :=
 
-SUBDIRS := adkui-fargate \
+SUBDIRS := adkui-ecsexpress \
+	adkui-eks \
+	adkui-fargate \
 	adkui-lightsail \
+	level_3-ecsexpress \
+	level_3-eks \
 	level_3-fargate \
 	level_3-lightsail \
 	mcp-apprunner-python-aws \
+	mcp-ecsexpress-python-aws \
+	mcp-eks-python-aws \
 	mcp-fargate-python-aws \
 	mcp-https-python-aws \
 	mcp-lambda-python-aws \
@@ -24,6 +30,8 @@ clean: $(addprefix clean-,$(SUBDIRS))
 release: $(addprefix release-,$(SUBDIRS))
 
 aws-destroy: $(addprefix aws-destroy-,$(SUBDIRS))
+
+destroy: $(addprefix aws-destroy-,$(SUBDIRS))
 
 define clean_task
 clean-$(1):

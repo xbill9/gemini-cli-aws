@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{IMAGE_NAME}}
+  labels:
+    app: {{IMAGE_NAME}}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: {{IMAGE_NAME}}
+  template:
+    metadata:
+      labels:
+        app: {{IMAGE_NAME}}
+    spec:
+      containers:
+      - name: {{IMAGE_NAME}}
+        image: {{ECR_URI}}:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "1024Mi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: PORT
+          value: "8080"
+        - name: GOOGLE_CLOUD_PROJECT
+          value: "{{GOOGLE_CLOUD_PROJECT}}"
+        - name: GOOGLE_CLOUD_LOCATION
+          value: "{{GOOGLE_CLOUD_LOCATION}}"
+        - name: GOOGLE_GENAI_USE_VERTEXAI
+          value: "{{GOOGLE_GENAI_USE_VERTEXAI}}"
+        - name: GOOGLE_API_KEY
+          value: "{{GOOGLE_API_KEY}}"
+        - name: MODEL_ID
+          value: "{{MODEL_ID}}"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{IMAGE_NAME}}-service
+spec:
+  selector:
+    app: {{IMAGE_NAME}}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer
