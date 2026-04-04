@@ -17,7 +17,39 @@ IMAGE_TAG ?= latest
 ECR_IMAGE_URI ?= $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPO_NAME):$(IMAGE_TAG)
 ECS_SERVICE_NAME ?= $(SERVICE_NAME)
 
-.PHONY: all install run build test lint format type-check status git-status ecs-status endpoint pull push clean deploy docker-build ecr-push ecs-deploy aws-destroy ecr-setup ecr-login iam-roles
+.PHONY: all install release build test lint format type-check status git-status ecs-status endpoint pull push clean deploy docker-build ecr-push ecs-deploy aws-destroy ecr-setup ecr-login iam-roles
+
+# Default target
+all: install
+
+install:
+	@echo "Installing dependencies from requirements.txt..."
+	@pip install -r requirements.txt
+
+# Run the server locally
+release:
+	@echo "Running the MCP server locally on port 8080..."
+	@python3 main.py
+
+# Run tests
+test:
+	@echo "Running tests..."
+	@python3 -m pytest
+
+# Run linting
+lint:
+	@echo "Running flake8..."
+	@python3 -m flake8 .
+
+# Run formatting
+format:
+	@echo "Running black..."
+	@python3 -m black .
+
+# Run type-checking
+type-check:
+	@echo "Running mypy..."
+	@python3 -m mypy .
 
 # Target to show both git and ECS status
 status: ecs-status

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "aws-ecs-express-python": {
-      "httpUrl": "https://mc-155dc10200ed4f0098e4505f6ec1ca81.ecs.us-east-1.on.aws/mcp"
+      "httpUrl": "https://mc-8d69e7dfa87344be98fdb3f7a8fbbbba.ecs.us-east-1.on.aws/mcp"
     }
   }
 }

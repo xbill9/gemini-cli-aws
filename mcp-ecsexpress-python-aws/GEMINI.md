@@ -39,19 +39,27 @@ This is a **Python-based Model Context Protocol (MCP) server** using the `FastMC
 The server is configured to run using the `HTTP` transport on `http://localhost:8080`.
 
 ```bash
-make run
+make release
 ```
+
+### Health Check Endpoints
+The server exposes two health check endpoints for infrastructure monitoring:
+- `GET /`
+- `GET /health`
 
 ## Makefile Commands
 
 The `Makefile` is the primary interface for development and deployment tasks:
 
-- **Monitoring:**
-    - `make status`: Shows ECS Express Mode service status.
+- **Monitoring & Management:**
+    - `make status`: Shows ECS Express Mode service status and endpoint.
+    - `make endpoint`: Retrieves the public endpoint URL for the ECS service.
+    - `make aws-destroy`: Deletes the ECS Express Mode service.
     - `make git-status`: Shows only git status.
     - `make ecs-status`: Queries AWS for the current ECS Express Mode service state.
 - **Deployment:**
     - `make deploy`: Full cycle: build image, push to ECR, and deploy to ECS Express Mode.
+    - `make cloudrun`: Submits a build to Google Cloud Build using `cloudbuild.yaml`.
     - `make docker-build`: Build the local container image.
     - `make ecr-push`: Setup ECR, login, and push the image.
     - `make ecs-deploy`: Create or update the ECS Express Mode service.

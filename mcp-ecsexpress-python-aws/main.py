@@ -1,6 +1,5 @@
 # main.py
 
-import asyncio
 import logging
 import sys
 import os
@@ -50,10 +49,9 @@ def greet(param: str) -> str:
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
     logger.info(f"🚀 MCP server started on port {port}")
-    
+
     mcp.run(
         transport="http",
         host="0.0.0.0",
         port=port,
     )
-

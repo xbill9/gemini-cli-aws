@@ -36,11 +36,16 @@ This project provides an MCP server named `hello-world-server` that exposes a `g
 ### Local Running
 To run the server manually:
 ```bash
-make run
+make release
 # or
 python main.py
 ```
 The server starts on `http://localhost:8080` by default.
+
+### Health Checks
+The server exposes two health check endpoints:
+- `GET /` - Root status check.
+- `GET /health` - Explicit health status check.
 
 ### Deployment to AWS ECS Express Mode
 The `Makefile` handles the full deployment lifecycle:
@@ -51,11 +56,14 @@ This will:
 1. Build and push the Docker image to ECR.
 2. Create or update the ECS Express Mode service.
 
-## Monitoring Status
-You can check the remote ECS service status:
-```bash
-make status
-```
+## Monitoring & Management
+You can check the remote ECS service status and endpoint:
+- **`make status`**: Show ECS Express Mode service status and endpoint.
+- **`make endpoint`**: Get the public endpoint URL.
+- **`make aws-destroy`**: Delete the ECS Express Mode service.
+
+## Google Cloud Integration
+- **`make cloudrun`**: Submit a build to Google Cloud Build using `cloudbuild.yaml`.
 
 ## Tools
 
