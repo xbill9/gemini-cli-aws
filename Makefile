@@ -1,21 +1,6 @@
 export AWS_PAGER :=
 
-SUBDIRS := adkui-ecsexpress \
-	adkui-eks \
-	adkui-fargate \
-	adkui-lightsail \
-	level_3-ecsexpress \
-	level_3-eks \
-	level_3-fargate \
-	level_3-lightsail \
-	mcp-apprunner-python-aws \
-	mcp-ecsexpress-python-aws \
-	mcp-eks-python-aws \
-	mcp-fargate-python-aws \
-	mcp-https-python-aws \
-	mcp-lambda-python-aws \
-	mcp-lightsail-python-aws \
-	mcp-stdio-python-aws
+SUBDIRS := $(sort $(patsubst %/,%,$(filter-out .gemini/ .git/,$(wildcard */))))
 
 .PHONY: list clean release aws-destroy $(addprefix clean-,$(SUBDIRS)) $(addprefix release-,$(SUBDIRS)) $(addprefix aws-destroy-,$(SUBDIRS))
 

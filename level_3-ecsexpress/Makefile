@@ -135,7 +135,7 @@ status: ecs-status
 
 endpoint:
 	@aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$(ECS_SERVICE_NAME) \
-                --query 'service.endpoint' --output text
+                --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text
 
 aws-destroy:
 	@echo "Destroying AWS resources for $(ECS_SERVICE_NAME)..."
