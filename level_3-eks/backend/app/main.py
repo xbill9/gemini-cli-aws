@@ -326,4 +326,25 @@ else:
 if __name__ == "__main__":
     # Run uvicorn programmatically
     logger.info(f"Starting server on port {PORT}...")
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    
+    # Path to SSL certificates, relative to this file
+    # Default locations:
+    # 1. Root directory (../../cert.pem) when running from backend/app/
+    # 2. Current directory (./cert.pem) when running from root (Docker)
+    ssl_keyfile = os.getenv("SSL_KEYFILE", "../../key.pem")
+    ssl_certfile = os.getenv("SSL_CERTFILE", "../../cert.pem")
+    
+    # Check current directory as fallback (for Docker)
+    if not os.path.exists(ssl_keyfile):
+        ssl_keyfile = "key.pem"
+    if not os.path.exists(ssl_certfile):
+        ssl_certfile = "cert.pem"
+        
+    if os.path.exists(ssl_keyfile) and os.path.exists(ssl_certfile):
+        logger.info(f"SSL certificates found: {ssl_keyfile}, {ssl_certfile}")
+        logger.info("Starting in HTTPS mode.")
+        uvicorn.run(app, host="0.0.0.0", port=PORT, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile)
+    else:
+        logger.warning(f"SSL certificates NOT found at {ssl_keyfile} or {ssl_certfile}")
+        logger.info("Starting in HTTP mode.")
+        uvicorn.run(app, host="0.0.0.0", port=PORT)

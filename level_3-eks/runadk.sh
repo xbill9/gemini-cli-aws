@@ -1,6 +1,18 @@
-cd $HOME/way-back-home/level_3-lightsail/backend/app/biometric_agent
-echo "GOOGLE_CLOUD_PROJECT=$(cat ~/project_id.txt)" > .env
-echo "GOOGLE_CLOUD_LOCATION=us-central1" >> .env
-echo "GOOGLE_GENAI_USE_VERTEXAI=True" >> .env
-cd $HOME/way-back-home/level_3-lightsail/backend/app
-adk web
+#!/bin/bash
+# runadk.sh: Launches the FastAPI backend.
+
+# Get the script's directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
+
+# Ensure environment is set up
+if [ -f ".env" ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+# Go to backend app directory
+cd backend/app
+
+# Run the app directly with python to use our SSL logic in main.py
+echo "Starting Mission Alpha Biometric Scout Backend..."
+python main.py
