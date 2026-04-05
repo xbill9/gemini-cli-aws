@@ -33,3 +33,4 @@ level_3-fargate/backend/app/biometric_agent/.adk/
 level_3-fargate/backend/app/biometric_agent/__pycache__/
 
 adkui/k8s-deployment.yaml
+adkui-eks/k8s-deployment.yaml
