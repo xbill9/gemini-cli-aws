@@ -53,8 +53,8 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 ## Makefile Commands
 
 *   **ECS Express Mode (Recommended)**:
-    *   `make deploy`: Full deployment cycle (ECR push + ECS deploy).
-    *   `make status`: Monitor the ECS Express service state.
+    *   `make deploy`: Full deployment cycle (ECR push + ECS deploy). Refreshes AWS credentials automatically.
+    *   `make status`: Monitor the ECS Express service state and active revisions.
     *   `make endpoint`: Get the public URL of the ECS service.
     *   `make aws-destroy`: Tear down ECS resources.
 *   **Legacy Lightsail**:
@@ -65,9 +65,10 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 
 ## Known Bugs & Workarounds
 
-*   **Environment Variables:** After editing `.env`, you must `source .env` or run `./set_env.sh`.
-*   **YAML Nesting:** The ADK CLI may nest YAML configurations in subdirectories incorrectly. They must be moved to the root of the respective agent's directory.
-*   **Issue Tracker:** Refer to [adk-python Issue #4134](https://github.com/google/adk-python/issues/4134).
+*   **AWS Token Expiration**: Long-running commands like `make deploy` (especially with `--monitor-resources`) can trigger `ExpiredTokenException`. The `Makefile` includes `save-aws-creds.sh` to refresh tokens.
+*   **ECS Health Checks**: The ADK UI redirects `/` to `/agent/Agent1`, causing health check failures (307 vs expected 200). The `Makefile` overrides the health check path to `/docs` which returns a `200 OK`.
+*   **ECS Network State**: `aws ecs update-express-gateway-service` may reset security groups and subnets if not explicitly provided. The `Makefile` dynamically fetches the existing `networkConfiguration` using `jq` and reapplies it during updates.
+*   **YAML Nesting**: The ADK CLI may nest YAML configurations in subdirectories incorrectly. They must be moved to the root of the respective agent's directory.
 
 ## Workflow (Agent3)
 

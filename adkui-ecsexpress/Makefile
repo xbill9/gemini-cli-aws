@@ -95,18 +95,24 @@ ecr-push: ecr-setup ecr-login docker-build
 # ECS Express Mode Deployment
 ecs-deploy:
 	@echo "Deploying to ECS Express Mode..."
-	@aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$(ECS_SERVICE_NAME) 2>/dev/null && \
-                (echo "Updating existing service..." && \
+	@if aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$(ECS_SERVICE_NAME) 2>/dev/null; then \
+                echo "Updating existing service..." && \
+                NET_CONFIG=$$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$(ECS_SERVICE_NAME) --query 'service.activeConfigurations[0].networkConfiguration' --output json | jq -c .) && \
                 aws ecs update-express-gateway-service \
                         --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$(ECS_SERVICE_NAME) \
-                        --primary-container $(ENV_VARS)) || \
-                (echo "Creating new service..." && \
+                        --health-check-path /docs \
+                        --network-configuration "$$NET_CONFIG" \
+                        --primary-container $(ENV_VARS); \
+        else \
+                echo "Creating new service..." && \
                 aws ecs create-express-gateway-service \
                         --service-name $(ECS_SERVICE_NAME) \
+                        --health-check-path /docs \
                         --primary-container $(ENV_VARS) \
                         --execution-role-arn arn:aws:iam::$(ACCOUNT_ID):role/ecsTaskExecutionRole \
                         --infrastructure-role-arn arn:aws:iam::$(ACCOUNT_ID):role/ecsInfrastructureRoleForExpressServices \
-                        --monitor-resources)
+                        --monitor-resources; \
+        fi
 
 aws-destroy:
 	@echo "Destroying AWS resources for $(ECS_SERVICE_NAME)..."

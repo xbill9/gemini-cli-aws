@@ -11,7 +11,7 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 - **AI Image Synthesis**: Generates 16:9 images for each panel using Vertex AI.
 - **HTML Assembly**: Compiles the final artwork and script into a responsive HTML comic book.
 - **Comic Inspection**: Dedicated agent for summarizing and exporting generated comics as UI artifacts.
-- **Multi-Cloud Deployment**: Scripts for deploying agents to **Google Cloud Run** and **Amazon Lightsail**.
+- **Multi-Cloud Deployment**: Scripts for deploying agents to **Google Cloud Run** and **AWS ECS Express Mode**.
 - **Low-Code Interface**: Use the ADK Builder for visual agent development.
 
 ## Project Structure
@@ -30,9 +30,9 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 - `agent_builder`: Launches the ADK Builder UI (accessible via browser) for visual agent design.
 - `myadk`: A convenience wrapper for the `adk` CLI tool.
 - `comic.sh`: Starts a local web server (port 8080) to view the generated comic.
-- `deploy-lightsail.sh`: Deploys the agent container to Amazon Lightsail.
 - `save-aws-creds.sh`: Exports and saves AWS credentials for deployment scripts.
 - `deploycloudrun.py`: Automates deployment to Google Cloud Run, including IAM and Service Account setup.
+- `deploy-lightsail.sh`: (Legacy) Deploys the agent container to Amazon Lightsail.
 - `fix_comic.py`: Manual utility to regenerate the `comic.html` with a default story (Momotaro).
 - `init.sh`: Comprehensive setup script to configure the GCP project, enable APIs, and install dependencies.
 - `set_env.sh` / `set_adc.sh`: Helpers to set environment variables and refresh Application Default Credentials.
@@ -40,10 +40,11 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 ## Makefile Commands
 
 - `make clean`: Removes log files, generated images, and temporary cache directories.
-- `make deploy`: Automatically saves AWS credentials and deploys to Amazon Lightsail.
-- `make deploy-lightsail`: Triggers the Lightsail deployment script.
-- `make lightsail-status`: Checks the current state and URL of the Lightsail container service.
-- `make endpoint`: Retrieves the public URL for the deployed Lightsail service.
+- `make deploy`: Automatically refreshes credentials, builds the Docker image, pushes it to ECR, and deploys to **AWS ECS Express Mode**.
+- `make status`: Checks the current state and public endpoint of the ECS Express service.
+- `make endpoint`: Retrieves the public URL for the deployed ECS service.
+- `make aws-destroy`: Tears down the ECS Express Mode resources.
+- `make deploy-lightsail`: (Legacy) Triggers the Lightsail deployment script.
 
 ## How it Works (Agent3 & Agent4)
 
@@ -61,7 +62,8 @@ This agent provides tools to inspect the `output/` directory, summarize the gene
 
 *   **Environment Variables**: After editing `.env`, run `source .env` or `./set_env.sh` to update your shell.
 *   **YAML Nesting**: The ADK CLI may nest YAML configurations in subdirectories incorrectly. They must be moved to the root of the respective agent's directory.
-*   **Issue Tracking**: See [google/adk-python Issue #4134](https://github.com/google/adk-python/issues/4134).
+*   **ECS Health Checks**: ECS Express Mode requires a successful health check. Since the root path redirects, the health check path is configured to `/docs` in the `Makefile`.
+*   **Network Configuration**: Updating ECS Express Mode services may reset network settings. The `Makefile` dynamically fetches and applies the current security groups and subnets during updates.
 
 ## Getting Started
 
@@ -75,10 +77,14 @@ This agent provides tools to inspect the `output/` directory, summarize the gene
 
 ## Deployment
 
-### Amazon Lightsail (Recommended)
-To deploy the project as a container to AWS Lightsail:
+### AWS ECS Express Mode (Recommended)
+To deploy the project as a container to AWS ECS Express Mode:
 ```bash
 make deploy
+```
+Monitor with:
+```bash
+make status
 ```
 
 ### Google Cloud Run
