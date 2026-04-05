@@ -17,6 +17,10 @@ EKS_CLUSTER ?= adkui-eks-cluster
 EKS_NAMESPACE ?= default
 EKS_REGION ?= $(AWS_REGION)
 
+# Gemini API configuration
+VERTEX_AI ?= 0
+GEMINI_API_KEY ?= $(shell echo $$GEMINI_API_KEY)
+
 # Binary names
 EKSCTL ?= eksctl
 KUBECTL ?= kubectl
@@ -56,6 +60,8 @@ eks-deploy: eks-update-kubeconfig docker-build ecr-login push-ecr
 	@echo "Deploying to Amazon EKS..."
 	@sed -e 's|{{ECR_URI}}|$(ECR_URI)|g' \
 	     -e 's|{{IMAGE_NAME}}|$(IMAGE_NAME)|g' \
+	     -e 's|{{VERTEX_AI}}|$(VERTEX_AI)|g' \
+	     -e 's|{{GEMINI_API_KEY}}|$(GEMINI_API_KEY)|g' \
 	     k8s-deployment.yaml.template > k8s-deployment.yaml
 	@$(KUBECTL) apply -f k8s-deployment.yaml
 

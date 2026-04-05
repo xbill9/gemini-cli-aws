@@ -31,6 +31,10 @@ spec:
           value: "8080"
         - name: ADK_DISABLE_LOCAL_STORAGE
           value: "1"
+        - name: VERTEX_AI
+          value: "{{VERTEX_AI}}"
+        - name: GEMINI_API_KEY
+          value: "{{GEMINI_API_KEY}}"
         livenessProbe:
           httpGet:
             path: /health
