@@ -70,10 +70,13 @@ The `Makefile` is the primary interface for development and deployment tasks:
     - `make endpoint`: Fetches the LoadBalancer hostname of the running EKS service.
     - `make logs`: Tails logs for the EKS pods.
 - **Deployment:**
-    - `make deploy` (or `make eks`): Full cycle: update kubeconfig, build image, ecr-login, push-ecr, and deploy to EKS.
+    - `make deploy` (or `make eks` or `make eks-deploy`): Full cycle: update kubeconfig, build image, ecr-login, push-ecr, and deploy to EKS.
     - `make docker-build`: Build the container image locally.
     - `make ecr-login`: Authenticate Docker with Amazon ECR.
     - `make push-ecr`: Push image to ECR (auto-creates repo if needed).
+- **Cluster Management:**
+    - `make cluster-create`: Create EKS cluster using `eks-cluster.yaml`.
+    - `make cluster-delete`: Delete EKS cluster.
 - **Cleanup:**
     - `make aws-destroy`: Deletes EKS resources and ECR repository.
 - **Code Quality:**
@@ -82,6 +85,7 @@ The `Makefile` is the primary interface for development and deployment tasks:
     - `make format`: Run black.
     - `make type-check`: Run mypy.
 - **Utilities:**
+    - `make help`: Show available Makefile commands.
     - `make clean`: Removes temporary files, virtual environments, and build artifacts.
     - `make pull` / `make push`: Git synchronization.
 

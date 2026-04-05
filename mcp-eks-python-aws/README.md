@@ -111,12 +111,16 @@ make aws-destroy
 
 ## Development Tasks
 
+- **`make help`**: Show all available Makefile commands.
 - **`make status`**: Show EKS deployment status.
 - **`make test`**: Run pytest suite.
 - **`make lint`**: Check code style (flake8).
 - **`make format`**: Auto-format code (black).
 - **`make type-check`**: Run static type analysis (mypy).
 - **`make clean`**: Remove build artifacts and virtual environments.
+- **`make git-status`**: Show git status.
+- **`make endpoint`**: Fetch the public LoadBalancer hostname.
+- **`make logs`**: Tail logs for EKS pods.
 
 ## Project Structure
 

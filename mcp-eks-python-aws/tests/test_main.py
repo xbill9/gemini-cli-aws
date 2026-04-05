@@ -11,8 +11,8 @@ def test_health_check():
 
 
 def test_greet_tool():
-    # greet is a FunctionTool in this version of fastmcp
-    result = greet.fn("Hello EKS")
+    # greet is a simple function when imported
+    result = greet("Hello EKS")
     assert result == "Hello EKS"
 
 

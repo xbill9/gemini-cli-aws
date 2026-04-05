@@ -4,3 +4,4 @@ __pycache__/
 .env
 .pytest_cache/.aws_creds
 .aws_creds
+k8s-deployment.yaml

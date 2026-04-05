@@ -24,16 +24,35 @@ KUBECTL ?= kubectl
 # Default target
 all: install lint format type-check test docker-build
 
-.PHONY: all install run build test lint format type-check status git-status endpoint pull push clean deploy eks docker-build ecr-login push-ecr logs eks-update-kubeconfig eks-deploy aws-destroy cluster-create cluster-delete
+help:
+	@echo "Available Makefile commands:"
+	@echo "  install           Install Python dependencies"
+	@echo "  run               Run the server locally"
+	@echo "  test              Run the pytest suite"
+	@echo "  lint              Run flake8 linting"
+	@echo "  format            Format code with black"
+	@echo "  type-check        Run mypy type checking"
+	@echo "  deploy (or eks)   Update kubeconfig, build image, and deploy to EKS"
+	@echo "  status            Check EKS deployment status"
+	@echo "  endpoint          Fetch the LoadBalancer hostname"
+	@echo "  logs              Tail logs for the EKS pods"
+	@echo "  cluster-create    Create EKS cluster using eks-cluster.yaml"
+	@echo "  cluster-delete    Delete EKS cluster"
+	@echo "  aws-destroy       Clean up EKS resources and ECR repository"
+	@echo "  clean             Remove temporary files and virtual environments"
+
+.PHONY: all help install run build test lint format type-check status git-status endpoint pull push clean deploy eks docker-build ecr-login push-ecr logs eks-update-kubeconfig eks-deploy aws-destroy cluster-create cluster-delete release
 
 # Installation and Execution
 install:
 	@echo "Installing dependencies..."
-	pip install -r requirements.txt
+	python3 -m pip install -r requirements.txt
 
 run:
 	@echo "Running the server locally..."
-	python main.py
+	python3 main.py
+
+release: install run
 
 # Code Quality and Testing
 lint:
