@@ -44,3 +44,7 @@ level_3-eks/backend/app/biometric_agent/__pycache__/
 level_3-eks/k8s-deployment.yaml
 level_3-eks/cert.pem
 level_3-eks/key.pem
+
+gemini31-lightsail/__pycache__/
+gemini31-lightsail/backend/app/__pycache__/
+gemini31-lightsail/backend/app/biometric_agent/__pycache__/
