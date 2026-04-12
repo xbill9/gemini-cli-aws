@@ -1,0 +1,64 @@
+{
+    "family": "{{TASK_FAMILY}}",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+        {
+            "name": "{{CONTAINER_NAME}}",
+            "image": "{{ECR_URI}}",
+            "portMappings": [
+                {
+                    "containerPort": 8080,
+                    "hostPort": 8080,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "GOOGLE_CLOUD_PROJECT",
+                    "value": "{{PROJECT_ID}}"
+                },
+                {
+                    "name": "GOOGLE_API_KEY",
+                    "value": "{{GEMINI_API_KEY}}"
+                },
+                {
+                    "name": "GEMINI_API_KEY",
+                    "value": "{{GEMINI_API_KEY}}"
+                },
+                {
+                    "name": "GEMINI_KEY",
+                    "value": "{{GEMINI_API_KEY}}"
+                },
+                {
+                    "name": "GOOGLE_CLOUD_LOCATION",
+                    "value": "{{GOOGLE_CLOUD_LOCATION}}"
+                },
+                {
+                    "name": "MODEL_ID",
+                    "value": "gemini-3.1-flash-live-preview"
+                },
+                {
+                    "name": "PORT",
+                    "value": "8080"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/{{TASK_FAMILY}}",
+                    "awslogs-region": "{{AWS_REGION}}",
+                    "awslogs-stream-prefix": "ecs",
+                    "awslogs-create-group": "true"
+                }
+            }
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "1024",
+    "memory": "2048",
+    "executionRoleArn": "arn:aws:iam::{{AWS_ACCOUNT_ID}}:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::{{AWS_ACCOUNT_ID}}:role/ecsTaskExecutionRole"
+}

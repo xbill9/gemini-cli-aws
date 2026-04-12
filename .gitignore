@@ -48,3 +48,10 @@ level_3-eks/key.pem
 gemini31-lightsail/__pycache__/
 gemini31-lightsail/backend/app/__pycache__/
 gemini31-lightsail/backend/app/biometric_agent/__pycache__/
+gemini31-fargate/task-definition.json
+
+gemini31-ecsexpress/backend/app/__pycache__/
+gemini31-ecsexpress/backend/app/biometric_agent/.adk/
+gemini31-ecsexpress/backend/app/biometric_agent/__pycache__/
+
+gemini31-lightsail/backend/app/biometric_agent/.adk/
