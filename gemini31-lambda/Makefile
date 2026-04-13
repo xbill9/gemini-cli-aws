@@ -21,7 +21,7 @@ FULL_IMAGE_NAME := $(ECR_REPO_URL):$(IMAGE_TAG)
 LAMBDA_ROLE_NAME := BiometricLambdaExecutionRole
 LAMBDA_ROLE_ARN := arn:aws:iam::$(AWS_ACCOUNT_ID):role/$(LAMBDA_ROLE_NAME)
 
-.PHONY: clean test lint deploy run endpoint frontend mock adk testadk status aws-destroy docker-build ecr-create ecr-login push-ecr lambda iam-setup save-creds
+.PHONY: clean test lint deploy run endpoint frontend mock adk testadk status aws-destroy docker-build ecr-create ecr-login push-ecr lambda iam-setup save-creds print-vars
 
 clean:
 	@echo "Cleaning up logs, caches, and temporary files..."
@@ -101,12 +101,13 @@ create-lambda-function:
 		aws lambda wait function-updated-v2 --function-name $(SERVICE_NAME) --region $(AWS_REGION); \
 		aws lambda update-function-configuration --region $(AWS_REGION) \
 			--function-name $(SERVICE_NAME) \
-			--timeout 300; \
+			--timeout 300 \
+			--environment "Variables={GOOGLE_API_KEY=$(GOOGLE_API_KEY)}"; \
 		echo "Updating Function URL to BUFFERED mode (Stateless HTTP)..."; \
 		aws lambda update-function-url-config --function-name $(SERVICE_NAME) \
 			--region $(AWS_REGION) \
 			--auth-type NONE \
-			--invoke-mode BUFFERED; \
+			--invoke-mode RESPONSE_STREAM; \
 		echo "Ensuring public URL access permission..."; \
 		aws lambda add-permission --function-name $(SERVICE_NAME) \
 			--region $(AWS_REGION) \
@@ -122,14 +123,15 @@ create-lambda-function:
 			--package-type Image \
 			--code ImageUri=$(FULL_IMAGE_NAME) \
 			--timeout 300 \
-			--memory-size 1024; \
+			--memory-size 1024 \
+			--environment "Variables={GOOGLE_API_KEY=$(GOOGLE_API_KEY)}"; \
 		echo "Waiting for function to be active..."; \
 		aws lambda wait function-active-v2 --function-name $(SERVICE_NAME) --region $(AWS_REGION); \
 		echo "Creating Function URL (BUFFERED mode for Stateless HTTP)..."; \
 		aws lambda create-function-url-config --function-name $(SERVICE_NAME) \
 			--region $(AWS_REGION) \
 			--auth-type NONE \
-			--invoke-mode BUFFERED; \
+			--invoke-mode RESPONSE_STREAM; \
 		echo "Adding permission for public URL access..."; \
 		aws lambda add-permission --function-name $(SERVICE_NAME) \
 			--region $(AWS_REGION) \
@@ -163,3 +165,4 @@ adk:
 
 testadk:
 	. ./testadk.sh
+

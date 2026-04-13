@@ -1,0 +1,10 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "kms:Decrypt",
+            "Resource": "arn:aws:kms:us-east-1:106059658660:key/20fd8a53-05ff-417d-b849-6d9323c253b6"
+        }
+    ]
+}

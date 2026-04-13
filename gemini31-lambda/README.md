@@ -83,25 +83,6 @@ The system acts as a "Security Interrogator" that requires a specific sequence o
 
 ## Deployment
 
-### Google Cloud Run
-
-Deploy to Google Cloud Run using the provided `Makefile`:
-
-```bash
-gcloud run deploy biometric-scout \
-  --image=gcr.io/${PROJECT_ID}/biometric-scout \
-  --platform=managed \
-  --region=us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars="MODEL_ID=gemini-3.1-flash-live-preview"
-```
-
-Alternatively, use the automated Cloud Build pipeline:
-
-```bash
-gcloud builds submit --substitutions=_GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
-```
-
 ### Amazon Lightsail (AWS)
 
 To deploy the system to Amazon Lightsail, ensure you have the [AWS CLI](https://aws.amazon.com/cli/) installed and configured with appropriate permissions.
