@@ -1,0 +1,22 @@
+# Core Dependencies
+google-adk
+a2a-sdk
+fastapi
+pydantic
+uvicorn
+python-json-logger
+click
+httpx
+httpx_sse
+google-genai
+psycopg2-binary
+
+# Dev Dependencies
+pytest
+pytest-asyncio
+nest-asyncio
+ruff
+mypy
+codespell
+types-pyyaml
+types-requests

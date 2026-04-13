@@ -1,0 +1,55 @@
+{
+    "executionRoleArn": "arn:aws:iam::106059658660:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::106059658660:role/ecsTaskExecutionRole",
+    "family": "orchestrator",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+        {
+            "name": "orchestrator",
+            "image": "<AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/orchestrator:latest",
+            "portMappings": [
+                {
+                    "containerPort": 8000,
+                    "hostPort": 8000,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "GOOGLE_API_KEY",
+                    "value": "<GOOGLE_API_KEY>"
+                },
+                {
+                    "name": "GENAI_MODEL",
+                    "value": "gemini-2.5-flash"
+                },
+                {
+                    "name": "RESEARCHER_AGENT_CARD_URL",
+                    "value": "http://192.168.9.220:8000/a2a/researcher/.well-known/agent-card.json"
+                },
+                {
+                    "name": "JUDGE_AGENT_CARD_URL",
+                    "value": "http://192.168.40.49:8000/a2a/judge/.well-known/agent-card.json"
+                },
+                {
+                    "name": "CONTENT_BUILDER_AGENT_CARD_URL",
+                    "value": "http://192.168.16.205:8000/a2a/content_builder/.well-known/agent-card.json"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/orchestrator",
+                    "awslogs-region": "<REGION>",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512"
+}
