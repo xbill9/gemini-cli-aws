@@ -56,8 +56,8 @@ e2e-test:
 
 e2e-test-ecs:
 	@echo "Fetching ECS endpoint..."
-	@ENDPOINT=$$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/course-creator --query 'service.endpoint' --output text 2>/dev/null); \
-	if [ -z "$$ENDPOINT" ] || [ "$$ENDPOINT" = "None" ]; then \
+	@ENDPOINT=$$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/course-creator --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text 2>/dev/null); \
+	if [ -z "$$ENDPOINT" ] || [ "$$ENDPOINT" = "None" ] || [ "$$ENDPOINT" = "null" ]; then \
 		echo "Error: ECS endpoint not found or service is still provisioning."; \
 		exit 1; \
 	fi; \
@@ -185,12 +185,12 @@ status-ecs:
 	@echo "--- ECS Express Services Status ---"
 	@for service in researcher judge content-builder orchestrator course-creator; do \
 		echo "Status for $$service:"; \
-		aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$$service --query 'service.{Name:serviceName, Status:status.statusCode, Endpoint:endpoint}' --output table 2>/dev/null || echo "Service $$service not found."; \
+		aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$$service --query 'service.{Name:serviceName, Status:status.statusCode, Endpoint:activeConfigurations[0].ingressPaths[0].endpoint}' --output table 2>/dev/null || echo "Service $$service not found."; \
 	done
 
 endpoint-ecs:
 	@echo "--- AWS ECS Endpoint (course-creator) ---"
-	@aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/course-creator --query 'service.endpoint' --output text 2>/dev/null || echo "Pending or not found..."
+	@aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/course-creator --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text 2>/dev/null || echo "Pending or not found..."
 
 iam-roles:
 	@echo "Creating IAM roles for ECS Express Mode..."

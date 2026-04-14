@@ -57,7 +57,7 @@ get_endpoint() {
     local service_name=$1
     local endpoint=""
     for i in {1..12}; do
-        endpoint=$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:${AWS_REGION}:${ACCOUNT_ID}:service/default/${service_name} --query 'service.endpoint' --output text 2>/dev/null || echo "")
+        endpoint=$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:${AWS_REGION}:${ACCOUNT_ID}:service/default/${service_name} --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text 2>/dev/null || echo "")
         if [ -n "$endpoint" ] && [ "$endpoint" != "None" ] && [ "$endpoint" != "null" ] && [ "$endpoint" != "" ]; then
             echo "$endpoint"
             return 0
