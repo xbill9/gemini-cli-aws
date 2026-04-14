@@ -1,6 +1,6 @@
-# AI Course Creator (Distributed Multi-Agent System - AWS EKS)
+# AI Course Creator (Distributed Multi-Agent System - AWS Fargate)
 
-A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol, deployed on **Amazon Elastic Kubernetes Service (EKS)**. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
+A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol, deployed on **Amazon ECS (Fargate)**. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
 
 ## Architecture
 
@@ -15,19 +15,18 @@ This project uses a distributed microservices architecture where each agent runs
 ## Project Structure
 
 ```
-multi-agent/
+multi-fargate/
 ├── agents/
 │   ├── orchestrator/     # Workflow management & remote agent connections
 │   ├── researcher/       # Information gathering (Google Search)
 │   ├── judge/            # Quality control (Structured Feedback)
 │   └── content_builder/  # Content generation (Markdown)
 ├── app/                  # Web application (FastAPI + Vanilla TS Frontend)
-├── shared/               # Shared utilities (Symlinked into agents)
+├── shared/               # Shared utilities (Used by agents and app)
 │   ├── a2a_utils.py      # A2A URL rewriting middleware
 │   ├── adk_app.py        # Standardized ADK FastAPI wrapper
 │   ├── authenticated_httpx.py # Service-to-service auth utilities
 │   └── logging_config.py # Centralized logging configuration
-├── eks/                  # AWS EKS deployment manifests and scripts
 ├── Makefile              # Development shortcuts
 ├── run_local.sh          # Local development startup script
 ├── set_env.sh            # Local .env generation script
@@ -40,7 +39,6 @@ multi-agent/
 *   **Node.js & npm**: For frontend development and builds.
 *   **Docker**: For building and pushing images.
 *   **AWS CLI**: For managing AWS resources.
-*   **kubectl**: For interacting with the EKS cluster.
 *   **Google API Key**: Required for Gemini.
 
 ## Quick Start
@@ -86,13 +84,13 @@ You can run automated E2E tests against the local or remote environment:
 # Test local environment (requires all services running)
 make e2e-test
 
-# Test remote EKS environment
-make e2e-test-eks
+# Test remote Fargate environment
+make e2e-test-fargate
 ```
 
-## Deployment to AWS EKS
+## Deployment to AWS Fargate
 
-The system is configured for deployment to **Amazon Elastic Kubernetes Service (EKS)**.
+The system is configured for deployment to **Amazon ECS (Fargate)**.
 
 1.  **Configure AWS:**
     ```bash
@@ -101,18 +99,18 @@ The system is configured for deployment to **Amazon Elastic Kubernetes Service (
 
 2.  **Run Deployment:**
     ```bash
-    make deploy-eks
+    # Build and push images to ECR
+    make deploy-fargate
     ```
-    This script handles ECR repository creation, image building/pushing, and Kubernetes manifest application.
 
 3.  **Check Status:**
     ```bash
-    make status-eks
+    make status-fargate
     ```
 
 4.  **Get Endpoint:**
     ```bash
-    make endpoint-eks
+    make endpoint-fargate
     ```
 
 ## Recommended Models

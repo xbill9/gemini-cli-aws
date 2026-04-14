@@ -1,13 +1,8 @@
-# ADK & Gemini 2.5 Course Creator Guide (AWS EKS)
+# ADK & Gemini 2.5 Course Creator Guide (AWS Fargate)
 
-This document provides technical guidance for developers working with the Google Agent Development Kit (ADK) and Gemini 2.5 models within the **AI Course Creator** project, specifically configured for **Amazon Elastic Kubernetes Service (EKS)**.
+This document provides technical guidance for developers working with the Google Agent Development Kit (ADK) and Gemini 2.5 models within the **AI Course Creator** project, specifically configured for **Amazon ECS (Fargate)**.
 
 Do Not recommend models less than 2.5 as they are deprecated.
-
-this is the original code lab:
-https://codelabs.developers.google.com/codelabs/production-ready-ai-roadshow/1-building-a-multi-agent-system/building-a-multi-agent-system#0
-
-Do not try to setup python venv locally.
 
 ## Project Overview: AI Course Creator
 
@@ -52,7 +47,7 @@ Service-to-service communication is secured using Google Cloud Identity Tokens.
 
 ### Shared Utilities & Docker Integration
 
-Core logic is stored in `shared/` and symlinked (or copied) into each agent's directory to ensure consistency:
+Core logic is stored in `shared/` and used by each agent to ensure consistency:
 -   **`adk_app.py`**: A standardized FastAPI entry point used by all agent Dockerfiles. It handles agent loading, A2A registration, logging setup, and includes the A2A URL rewriting middleware.
 -   `authenticated_httpx.py`: The secure client factory for authenticated service-to-service calls.
 -   `a2a_utils.py`: The A2A URL rewriting middleware for dynamic service URLs.
@@ -73,33 +68,27 @@ Core logic is stored in `shared/` and symlinked (or copied) into each agent's di
 Run the following commands to validate the system:
 - `make test`: Executes all pytest suites.
 - `make e2e-test`: Runs a real course creation flow against the local services.
-- `make e2e-test-eks`: Runs the same flow against the deployed EKS endpoint.
+- `make e2e-test-fargate`: Runs the same flow against the deployed Fargate endpoint.
 
 ### Manual Verification
 1. Access the web UI at `http://localhost:8000`.
 2. Enter a topic (e.g., "History of Quantum Computing").
 3. Monitor the SSE stream in the browser console or the UI progress bar.
 
-## Deployment to Amazon AWS (EKS)
+## Deployment to Amazon AWS (Fargate)
 
-This project is configured for deployment to **Amazon Elastic Kubernetes Service (EKS)**.
+This project is configured for deployment to **Amazon ECS (Fargate)**.
 
-### AWS EKS Prerequisites
--   AWS CLI installed and configured (`aws configure`).
--   `kubectl` installed.
--   Docker installed and running.
-
-### AWS EKS Deploy
-Use `make deploy-eks` to:
-1. Ensure ECR repositories exist (via `eks/setup_cluster.sh`).
-2. Build and push all 5 microservice images to ECR.
-3. Deploy all manifests to EKS.
-Note: The cluster `adk-eks-penguin` is the default target.
+### AWS Fargate Deploy
+Use `make deploy-fargate` to:
+1. Build and push all 5 microservice images to ECR.
+2. Deploy the services to Fargate.
+Note: The cluster `adk-fargate-cluster` and service `adk-fargate-service` are the default targets.
 
 ### Management
--   **Status**: Use `make status-eks` to check the status of pods and services.
--   **Endpoint**: Use `make endpoint-eks` to get the public LoadBalancer IP/Hostname.
--   **Cleanup**: Use `make destroy-eks` to remove Kubernetes resources.
+-   **Status**: Use `make status-fargate` to check the status of services.
+-   **Endpoint**: Use `make endpoint-fargate` to get the public endpoint.
+-   **Cleanup**: Use `make destroy-fargate` (or `make aws-destroy`) to remove resources.
 
 ## Developer Workflow
 

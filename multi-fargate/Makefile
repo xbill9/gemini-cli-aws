@@ -10,7 +10,7 @@ export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-eks destroy-eks status-eks endpoint-eks clean help e2e-test e2e-test-eks
+.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-fargate destroy-fargate aws-destroy fargate-status status-fargate endpoint-fargate clean help e2e-test e2e-test-fargate
 
 help:
 	@echo "Available commands:"
@@ -26,12 +26,15 @@ help:
 	@echo "  test-judge            - Test the Judge agent directly"
 	@echo "  test-orchestrator     - Test the Orchestrator logic"
 	@echo "  e2e-test              - Run end-to-end test against localhost"
-	@echo "  e2e-test-eks          - Run end-to-end test against EKS endpoint"
+	@echo "  e2e-test-fargate      - Run end-to-end test against Fargate endpoint"
 	@echo "  lint                  - Run linting checks (ruff)"
-	@echo "  deploy-eks            - Deploy all services to AWS EKS"
-	@echo "  destroy-eks           - Delete EKS resources"
-	@echo "  status-eks            - Show EKS status"
-	@echo "  endpoint-eks          - Show EKS service endpoint"
+	@echo "  deploy-fargate        - Deploy all services to AWS Fargate"
+	@echo "  setup-fargate         - Provision AWS Fargate infrastructure"
+	@echo "  destroy-fargate       - Delete Fargate resources"
+	@echo "  aws-destroy           - Delete Fargate resources (alias for destroy-fargate)"
+	@echo "  status-fargate        - Show Fargate status"
+	@echo "  fargate-status        - Show Fargate status (alias for status-fargate)"
+	@echo "  endpoint-fargate      - Show Fargate service endpoint"
 	@echo "  clean                 - Remove caches and logs"
 
 TEST_URL ?= http://localhost:8000
@@ -45,14 +48,20 @@ e2e-test:
 		|| (echo "E2E Test Failed: No valid response from $(TEST_URL)" && exit 1)
 	@echo "\nE2E Test Completed successfully!"
 
-e2e-test-eks:
-	@echo "Fetching EKS endpoint..."
-	@ENDPOINT=$$(kubectl get svc course-creator -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null); \
-	if [ -z "$$ENDPOINT" ]; then \
-		echo "Error: EKS endpoint not found. Check if the service is deployed."; \
+e2e-test-fargate:
+	@echo "Fetching Fargate endpoint..."
+	@TASK_ARN=$$(aws ecs list-tasks --cluster adk-fargate-cluster --service-name adk-fargate-service --region us-east-1 --query 'taskArns[0]' --output text); \
+	if [ "$$TASK_ARN" = "None" ] || [ -z "$$TASK_ARN" ]; then \
+		echo "Error: No running tasks found."; \
 		exit 1; \
 	fi; \
-	$(MAKE) e2e-test TEST_URL=http://$$ENDPOINT
+	ENI_ID=$$(aws ecs describe-tasks --cluster adk-fargate-cluster --tasks $$TASK_ARN --region us-east-1 --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text); \
+	PUBLIC_IP=$$(aws ec2 describe-network-interfaces --network-interface-ids $$ENI_ID --region us-east-1 --query 'NetworkInterfaces[0].Association.PublicIp' --output text); \
+	if [ "$$PUBLIC_IP" = "None" ] || [ -z "$$PUBLIC_IP" ]; then \
+		echo "Error: No public IP associated with the task."; \
+		exit 1; \
+	fi; \
+	$(MAKE) e2e-test TEST_URL=http://$$PUBLIC_IP:8080
 
 install:
 	@echo "Installing root dependencies..."
@@ -159,27 +168,50 @@ test-orchestrator:
 test-content-builder:
 	python agents/content_builder/tests/test_agent.py
 
-deploy: deploy-eks
+.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-fargate setup-fargate destroy-fargate aws-destroy fargate-status status-fargate endpoint-fargate clean help e2e-test e2e-test-fargate
 
-deploy-eks:
-	chmod +x eks/*.sh
-	./eks/deploy-eks.sh
+deploy: deploy-fargate
 
-destroy-eks:
-	@echo "Destroying EKS resources..."
-	kubectl delete -f eks/manifests.yaml || true
-	kubectl delete secret adk-secrets || true
-	@echo "Note: This does not delete the EKS cluster or ECR repos."
+deploy-fargate:
+	chmod +x *.sh 2>/dev/null || true
+	./deploy-fargate.sh
 
-status: status-eks
+setup-fargate:
+	chmod +x *.sh 2>/dev/null || true
+	./setup-fargate.sh
 
-status-eks:
-	@echo "Checking EKS Deployment status..."
-	@kubectl get deployments
-	@kubectl get pods
-	@kubectl get services
+destroy-fargate: aws-destroy
 
-eks-status: status-eks
+aws-destroy:
+	@echo "Destroying AWS resources for adk-fargate..."
+	@aws ecs update-service --cluster adk-fargate-cluster --service adk-fargate-service --desired-count 0 --region us-east-1 2>/dev/null || true
+	@aws ecs delete-service --cluster adk-fargate-cluster --service adk-fargate-service --force --region us-east-1 2>/dev/null || true
+	@aws ecs delete-cluster --cluster adk-fargate-cluster --region us-east-1 2>/dev/null || true
+	@aws ecr delete-repository --repository-name adk-course-creator --region us-east-1 --force 2>/dev/null || true
+	@echo "AWS resources destroyed."
+
+fargate-status: status-fargate
+
+status-fargate:
+	@aws ecs describe-services --cluster adk-fargate-cluster --services adk-fargate-service --region us-east-1 \
+		--query 'services[0].{Name:serviceName, Status:status, Desired:desiredCount, Running:runningCount, TaskDef:taskDefinition}' \
+		--output table
+
+endpoint-fargate:
+	@TASK_ARN=$$(aws ecs list-tasks --cluster adk-fargate-cluster --service-name adk-fargate-service --region us-east-1 --query 'taskArns[0]' --output text); \
+	if [ "$$TASK_ARN" != "None" ] && [ -n "$$TASK_ARN" ]; then \
+		ENI_ID=$$(aws ecs describe-tasks --cluster adk-fargate-cluster --tasks $$TASK_ARN --region us-east-1 --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text); \
+		PUBLIC_IP=$$(aws ec2 describe-network-interfaces --network-interface-ids $$ENI_ID --region us-east-1 --query 'NetworkInterfaces[0].Association.PublicIp' --output text); \
+		if [ "$$PUBLIC_IP" != "None" ] && [ -n "$$PUBLIC_IP" ]; then \
+			echo "Fargate Endpoint: http://$$PUBLIC_IP:8080"; \
+		else \
+			echo "No public IP associated with the task."; \
+		fi \
+	else \
+		echo "No running tasks found."; \
+	fi
+
+status: status-fargate
 
 local:
 	@echo "--- Local Service URLs ---"
@@ -198,12 +230,7 @@ check-local:
 	@echo "--- Process Status ---"
 	@ps aux | grep -E "[s]hared[.]adk_app|[m]ain[.]py|[v]ite" || echo "No matching processes found."
 
-endpoint: endpoint-eks
-
-endpoint-eks:
-	@echo "--- AWS EKS Endpoint ---"
-	@kubectl get svc course-creator -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Pending..."
-	@echo ""
+endpoint: endpoint-fargate
 
 clean:
 	@echo "Cleaning up caches and temporary files..."
