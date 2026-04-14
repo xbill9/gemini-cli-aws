@@ -10,7 +10,16 @@ export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy destroy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-ecs destroy-ecs status-ecs endpoint-ecs e2e-test-ecs
+# AWS Configuration
+AWS_REGION ?= us-east-1
+ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query "Account" --output text 2>/dev/null)
+GEMINI_API_KEY := $(shell [ -f ~/gemini.key ] && cat ~/gemini.key || echo "N/A")
+
+# ECS Express Mode Configuration
+SERVICES = researcher judge content-builder orchestrator app
+CLUSTER_NAME = multi-agent-cluster
+
+.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy destroy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-ecs destroy-ecs status-ecs endpoint-ecs e2e-test-ecs iam-roles ecr-setup ecr-login ecr-push ecs-deploy-express
 
 help:
 	@echo "Available commands:"
@@ -26,10 +35,11 @@ help:
 	@echo "  test-judge            - Test the Judge agent directly"
 	@echo "  test-orchestrator     - Test the Orchestrator logic"
 	@echo "  lint                  - Run linting checks (ruff)"
-	@echo "  deploy-ecs            - Deploy all services to AWS ECS Fargate"
+	@echo "  iam-roles             - Create IAM roles for ECS Express Mode"
+	@echo "  deploy-ecs            - Deploy all services to AWS ECS (Express Mode)"
 	@echo "  destroy-ecs           - Delete ECS services"
 	@echo "  status-ecs            - Show ECS status"
-	@echo "  endpoint-ecs          - Show ECS service public IP"
+	@echo "  endpoint-ecs          - Show ECS service public IP/Endpoint"
 	@echo "  e2e-test-ecs          - Run end-to-end test against ECS endpoint"
 	@echo "  clean                 - Remove caches and logs"
 
@@ -46,12 +56,12 @@ e2e-test:
 
 e2e-test-ecs:
 	@echo "Fetching ECS endpoint..."
-	@ENDPOINT=$$(aws ecs list-tasks --cluster multi-agent-cluster --service-name course-creator --region us-east-1 --query 'taskArns[0]' --output text | xargs -I {} aws ecs describe-tasks --cluster multi-agent-cluster --tasks {} --region us-east-1 --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text | xargs -I {} aws ec2 describe-network-interfaces --network-interface-ids {} --region us-east-1 --query 'NetworkInterfaces[0].Association.PublicIp' --output text 2>/dev/null); \
-	if [ -z "$$ENDPOINT" ]; then \
-		echo "Error: ECS endpoint not found or task is still provisioning."; \
+	@ENDPOINT=$$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/course-creator --query 'service.endpoint' --output text 2>/dev/null); \
+	if [ -z "$$ENDPOINT" ] || [ "$$ENDPOINT" = "None" ]; then \
+		echo "Error: ECS endpoint not found or service is still provisioning."; \
 		exit 1; \
 	fi; \
-	$(MAKE) e2e-test TEST_URL=http://$$ENDPOINT:8080
+	$(MAKE) e2e-test TEST_URL=http://$$ENDPOINT
 
 install:
 	@echo "Installing root dependencies..."
@@ -160,26 +170,42 @@ test-content-builder:
 
 deploy: deploy-ecs
 
-deploy-ecs:
-	./ecs/deploy-ecs.sh
+deploy-ecs: iam-roles
+	./ecs/deploy-express.sh
 
 destroy-ecs:
-	@echo "Destroying ECS services in cluster multi-agent-cluster..."
+	@echo "Destroying ECS Express services in cluster default..."
 	@for service in researcher judge content-builder orchestrator course-creator; do \
 		echo "Deleting service $$service..."; \
-		aws ecs update-service --cluster multi-agent-cluster --service $$service --desired-count 0 --region us-east-1 || true; \
-		aws ecs delete-service --cluster multi-agent-cluster --service $$service --region us-east-1 || true; \
+		aws ecs delete-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$$service 2>/dev/null || true; \
 	done
 	@echo "Destroy completed."
 
 status-ecs:
-	@echo "--- ECS Cluster Status (multi-agent-cluster) ---"
-	@aws ecs list-services --cluster multi-agent-cluster --region us-east-1
-	@aws ecs list-tasks --cluster multi-agent-cluster --region us-east-1
+	@echo "--- ECS Express Services Status ---"
+	@for service in researcher judge content-builder orchestrator course-creator; do \
+		echo "Status for $$service:"; \
+		aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$$service --query 'service.{Name:serviceName, Status:status.statusCode, Endpoint:endpoint}' --output table 2>/dev/null || echo "Service $$service not found."; \
+	done
 
 endpoint-ecs:
 	@echo "--- AWS ECS Endpoint (course-creator) ---"
-	@aws ecs list-tasks --cluster multi-agent-cluster --service-name course-creator --region us-east-1 --query 'taskArns[0]' --output text | xargs -I {} aws ecs describe-tasks --cluster multi-agent-cluster --tasks {} --region us-east-1 --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text | xargs -I {} aws ec2 describe-network-interfaces --network-interface-ids {} --region us-east-1 --query 'NetworkInterfaces[0].Association.PublicIp' --output text 2>/dev/null || echo "Pending..."
+	@aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/course-creator --query 'service.endpoint' --output text 2>/dev/null || echo "Pending or not found..."
+
+iam-roles:
+	@echo "Creating IAM roles for ECS Express Mode..."
+	@# Task Execution Role
+	@aws iam get-role --role-name ecsTaskExecutionRole 2>/dev/null || \
+                (aws iam create-role --role-name ecsTaskExecutionRole \
+                        --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ecs-tasks.amazonaws.com"},"Action":"sts:AssumeRole"}]}' && \
+                aws iam attach-role-policy --role-name ecsTaskExecutionRole \
+                        --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy)
+	@# Infrastructure Role
+	@aws iam get-role --role-name ecsInfrastructureRoleForExpressServices 2>/dev/null || \
+                (aws iam create-role --role-name ecsInfrastructureRoleForExpressServices \
+                        --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ecs.amazonaws.com"},"Action":"sts:AssumeRole"}]}' && \
+                aws iam attach-role-policy --role-name ecsInfrastructureRoleForExpressServices \
+                        --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices)
 
 local:
 	@echo "--- Local Service URLs ---"
