@@ -70,8 +70,8 @@ get_endpoint() {
 
 # Order matters: deps first
 for SERVICE in researcher judge content-builder orchestrator app; do
-    SERVICE_NAME=$SERVICE
-    if [ "$SERVICE" == "app" ]; then SERVICE_NAME="course-creator"; fi
+    SERVICE_NAME="v2-${SERVICE}"
+    if [ "$SERVICE" == "app" ]; then SERVICE_NAME="v2-course-creator"; fi
     
     echo "Deploying service: ${SERVICE_NAME}..."
     
@@ -84,22 +84,25 @@ for SERVICE in researcher judge content-builder orchestrator app; do
     
     # Add dependency URLs for orchestrator
     if [ "$SERVICE" == "orchestrator" ]; then
-        RESEARCHER_URL=$(get_endpoint "researcher")
-        JUDGE_URL=$(get_endpoint "judge")
-        CONTENT_BUILDER_URL=$(get_endpoint "content-builder")
+        RESEARCHER_URL=$(get_endpoint "v2-researcher")
+        JUDGE_URL=$(get_endpoint "v2-judge")
+        CONTENT_BUILDER_URL=$(get_endpoint "v2-content-builder")
         
         ENV="[{name=GOOGLE_API_KEY,value=${GOOGLE_API_KEY}},{name=GENAI_MODEL,value=${GENAI_MODEL}},{name=RESEARCHER_AGENT_CARD_URL,value=http://${RESEARCHER_URL}/a2a/researcher/.well-known/agent-card.json},{name=JUDGE_AGENT_CARD_URL,value=http://${JUDGE_URL}/a2a/judge/.well-known/agent-card.json},{name=CONTENT_BUILDER_AGENT_CARD_URL,value=http://${CONTENT_BUILDER_URL}/a2a/content_builder/.well-known/agent-card.json}]"
     fi
     
     # Add orchestrator URL for app
     if [ "$SERVICE" == "app" ]; then
-        ORCHESTRATOR_URL=$(get_endpoint "orchestrator")
+        ORCHESTRATOR_URL=$(get_endpoint "v2-orchestrator")
         ENV="[{name=GOOGLE_API_KEY,value=${GOOGLE_API_KEY}},{name=GENAI_MODEL,value=${GENAI_MODEL}},{name=AGENT_SERVER_URL,value=http://${ORCHESTRATOR_URL}},{name=AGENT_NAME,value=orchestrator}]"
     fi
     
     PRIMARY_CONTAINER="image=${ECR_IMAGE_URI},containerPort=${PORT},environment=${ENV}"
     
-    if aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:${AWS_REGION}:${ACCOUNT_ID}:service/default/${SERVICE_NAME} 2>/dev/null; then
+    # Check if service exists AND is ACTIVE
+    STATUS=$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:${AWS_REGION}:${ACCOUNT_ID}:service/default/${SERVICE_NAME} --query 'service.status.statusCode' --output text 2>/dev/null || echo "NOT_FOUND")
+    
+    if [ "$STATUS" == "ACTIVE" ]; then
         echo "Updating existing service ${SERVICE_NAME}..."
         aws ecs update-express-gateway-service \
             --service-arn arn:aws:ecs:${AWS_REGION}:${ACCOUNT_ID}:service/default/${SERVICE_NAME} \

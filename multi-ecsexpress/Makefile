@@ -1,4 +1,4 @@
-# Makefile for AI Course Creator (Multi-Agent System)
+# Makefile for AI Course Creator (Multi-Agent System) on AWS ECS Express Mode
 
 # Use the current python3 from environment
 PYTHON_CMD ?= $(shell which python3)
@@ -17,9 +17,11 @@ GEMINI_API_KEY := $(shell [ -f ~/gemini.key ] && cat ~/gemini.key || echo "N/A")
 
 # ECS Express Mode Configuration
 SERVICES = researcher judge content-builder orchestrator app
-CLUSTER_NAME = multi-agent-cluster
+CLUSTER_NAME = default
 
-.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy destroy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-ecs destroy-ecs status-ecs endpoint-ecs e2e-test-ecs iam-roles ecr-setup ecr-login ecr-push ecs-deploy-express
+.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy destroy aws-destroy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend e2e-test e2e-test-ecs ecr-setup ecr-login ecr-push docker-build iam-roles ecs-deploy status-ecs endpoint-ecs
+
+# --- General Targets ---
 
 help:
 	@echo "Available commands:"
@@ -28,40 +30,14 @@ help:
 	@echo "  stop                  - Stop all local services (alias for stop-local)"
 	@echo "  run                   - Start all services locally (alias for start-local)"
 	@echo "  local                 - Show local service URLs"
-	@echo "  start-local           - Start all local services in background"
-	@echo "  stop-local            - Stop all local processes"
 	@echo "  test                  - Run all tests (pytest)"
-	@echo "  test-researcher       - Test the Researcher agent directly"
-	@echo "  test-judge            - Test the Judge agent directly"
-	@echo "  test-orchestrator     - Test the Orchestrator logic"
 	@echo "  lint                  - Run linting checks (ruff)"
-	@echo "  iam-roles             - Create IAM roles for ECS Express Mode"
-	@echo "  deploy-ecs            - Deploy all services to AWS ECS (Express Mode)"
-	@echo "  destroy-ecs           - Delete ECS services"
-	@echo "  status-ecs            - Show ECS status"
-	@echo "  endpoint-ecs          - Show ECS service public IP/Endpoint"
+	@echo "  deploy                - Full deployment to AWS ECS (ECR push + IAM roles + ECS deploy)"
+	@echo "  destroy               - Delete all ECS services"
+	@echo "  status                - Show ECS service status"
+	@echo "  endpoint              - Show app endpoint"
 	@echo "  e2e-test-ecs          - Run end-to-end test against ECS endpoint"
 	@echo "  clean                 - Remove caches and logs"
-
-TEST_URL ?= http://localhost:8000
-TEST_MESSAGE ?= "Create a short course about the history of the internet"
-e2e-test:
-	@echo "Running end-to-end test against $(TEST_URL)..."
-	@curl -s -X POST $(TEST_URL)/api/chat_stream \
-		-H "Content-Type: application/json" \
-		-d '{"message": $(TEST_MESSAGE), "user_id": "e2e_test_user"}' \
-		--no-buffer \
-		|| (echo "E2E Test Failed: No valid response from $(TEST_URL)" && exit 1)
-	@echo "\nE2E Test Completed successfully!"
-
-e2e-test-ecs:
-	@echo "Fetching ECS endpoint..."
-	@ENDPOINT=$$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/course-creator --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text 2>/dev/null); \
-	if [ -z "$$ENDPOINT" ] || [ "$$ENDPOINT" = "None" ] || [ "$$ENDPOINT" = "null" ]; then \
-		echo "Error: ECS endpoint not found or service is still provisioning."; \
-		exit 1; \
-	fi; \
-	$(MAKE) e2e-test TEST_URL=http://$$ENDPOINT
 
 install:
 	@echo "Installing root dependencies..."
@@ -71,14 +47,21 @@ install:
 	@echo "Installing frontend dependencies..."
 	cd app/frontend && npm install
 
+clean:
+	@echo "Cleaning up caches and temporary files..."
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	find . -type d -name ".ruff_cache" -exec rm -rf {} +
+	find . -type d -name ".adk" -exec rm -rf {} +
+	find . -type f -name "*.log" -delete
+	@echo "Clean completed."
+
+# --- Local Development ---
+
 run: start-local
-
 start: start-local
-
 run-local: start-local
-
 restart-local: start-local
-
 stop: stop-local
 
 check-frontend:
@@ -86,6 +69,9 @@ check-frontend:
 		echo "Frontend build missing. Building frontend..."; \
 		$(MAKE) frontend; \
 	fi
+
+frontend:
+	make -C app build-frontend
 
 researcher-local:
 	@echo "Starting Researcher agent locally on port 8001..."
@@ -118,14 +104,14 @@ agents-local: stop-local
 	@echo "Waiting for sub-agents to start..."
 	@sleep 5
 	@nohup $(MAKE) orchestrator-local > orchestrator.log 2>&1 &
-	@echo "All agents started. Logs: researcher.log, judge.log, content_builder.log, orchestrator.log"
+	@echo "All agents started."
 
 start-local: check-frontend agents-local
 	@echo "Starting App Backend in background..."
 	@nohup $(MAKE) backend-local > backend.log 2>&1 &
 	@echo "Starting Frontend dev server in background..."
 	@nohup $(MAKE) frontend-local > frontend.log 2>&1 &
-	@echo "All services started. Logs: researcher.log, judge.log, content_builder.log, orchestrator.log, backend.log, frontend.log"
+	@echo "All services started."
 	@echo "Frontend: http://localhost:5173"
 	@echo "Backend:  http://localhost:8000"
 
@@ -147,8 +133,13 @@ frontend-local:
 	@echo "Starting Frontend (Vite) dev server..."
 	@/bin/bash -c "cd app/frontend && npm run dev -- --host 0.0.0.0"
 
-frontend:
-	make -C app build-frontend
+local:
+	@echo "--- Local Service URLs ---"
+	@echo "Frontend: http://localhost:5173"
+	@echo "Backend:  http://localhost:8000"
+	@echo "Agents: researcher (8001), judge (8002), content-builder (8003), orchestrator (8004)"
+
+# --- Testing ---
 
 lint:
 	ruff check .
@@ -165,71 +156,117 @@ test-judge:
 test-orchestrator:
 	python agents/orchestrator/test_orchestrator.py
 
-test-content-builder:
-	python agents/content_builder/tests/test_agent.py
+TEST_URL ?= http://localhost:8000
+TEST_MESSAGE ?= "Create a short course about the history of the internet"
+e2e-test:
+	@echo "Running end-to-end test against $(TEST_URL)..."
+	@curl -s -X POST $(TEST_URL)/api/chat_stream \
+		-H "Content-Type: application/json" \
+		-d '{"message": $(TEST_MESSAGE), "user_id": "e2e_test_user"}' \
+		--no-buffer \
+		|| (echo "E2E Test Failed" && exit 1)
+	@echo "\nE2E Test Completed successfully!"
 
-deploy: deploy-ecs
+e2e-test-ecs:
+	@echo "Fetching ECS endpoint..."
+	@ENDPOINT=$$(aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/v2-course-creator --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text 2>/dev/null); \
+	if [ -z "$$ENDPOINT" ] || [ "$$ENDPOINT" = "None" ] || [ "$$ENDPOINT" = "null" ]; then \
+		echo "Error: ECS endpoint not found."; \
+		exit 1; \
+	fi; \
+	$(MAKE) e2e-test TEST_URL=http://$$ENDPOINT
 
-deploy-ecs: iam-roles
-	./ecs/deploy-express.sh
+# --- AWS ECS Deployment (Express Mode) ---
 
-destroy-ecs:
-	@echo "Destroying ECS Express services in cluster default..."
-	@for service in researcher judge content-builder orchestrator course-creator; do \
-		echo "Deleting service $$service..."; \
-		aws ecs delete-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$$service 2>/dev/null || true; \
-	done
-	@echo "Destroy completed."
+# Primary deploy command
+deploy: ecr-push iam-roles ecs-deploy
 
-status-ecs:
-	@echo "--- ECS Express Services Status ---"
-	@for service in researcher judge content-builder orchestrator course-creator; do \
-		echo "Status for $$service:"; \
-		aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/$$service --query 'service.{Name:serviceName, Status:status.statusCode, Endpoint:activeConfigurations[0].ingressPaths[0].endpoint}' --output table 2>/dev/null || echo "Service $$service not found."; \
-	done
+# Target to show AWS ECS status
+status: status-ecs
 
-endpoint-ecs:
-	@echo "--- AWS ECS Endpoint (course-creator) ---"
-	@aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/course-creator --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text 2>/dev/null || echo "Pending or not found..."
+# Target to get the public endpoint URL
+endpoint: endpoint-ecs
 
+# IAM roles for ECS Express Mode
 iam-roles:
 	@echo "Creating IAM roles for ECS Express Mode..."
-	@# Task Execution Role
 	@aws iam get-role --role-name ecsTaskExecutionRole 2>/dev/null || \
                 (aws iam create-role --role-name ecsTaskExecutionRole \
                         --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ecs-tasks.amazonaws.com"},"Action":"sts:AssumeRole"}]}' && \
                 aws iam attach-role-policy --role-name ecsTaskExecutionRole \
                         --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy)
-	@# Infrastructure Role
 	@aws iam get-role --role-name ecsInfrastructureRoleForExpressServices 2>/dev/null || \
                 (aws iam create-role --role-name ecsInfrastructureRoleForExpressServices \
                         --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ecs.amazonaws.com"},"Action":"sts:AssumeRole"}]}' && \
                 aws iam attach-role-policy --role-name ecsInfrastructureRoleForExpressServices \
                         --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices)
 
-local:
-	@echo "--- Local Service URLs ---"
-	@echo "Frontend: http://localhost:5173"
-	@echo "Backend:  http://localhost:8000 (main app)"
-	@echo "Agents:"
-	@echo "  Researcher:      http://localhost:8001"
-	@echo "  Judge:           http://localhost:8002"
-	@echo "  Content Builder: http://localhost:8003"
-	@echo "  Orchestrator:    http://localhost:8004"
+# ECR setup and push for all services
+ecr-setup:
+	@echo "Ensuring ECR repositories exist..."
+	@for service in $(SERVICES); do \
+		REPO_NAME=ai-course-creator-$$service; \
+		aws ecr describe-repositories --repository-names $$REPO_NAME --region $(AWS_REGION) 2>/dev/null || \
+			aws ecr create-repository --repository-name $$REPO_NAME --region $(AWS_REGION); \
+	done
 
-check-local:
-	@echo "Checking status of locally running agents and servers..."
-	@echo "--- Network Status ---"
-	@netstat -tulnp 2>/dev/null | grep -E "8000|8001|8002|8003|8004|5173" || echo "No services listening on expected ports (8000-8004, 5173)."
-	@echo "--- Process Status ---"
-	@ps aux | grep -E "[s]hared[.]adk_app|[m]ain[.]py|[v]ite" || echo "No matching processes found."
+ecr-login:
+	@echo "Logging into ECR..."
+	@aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 
-clean:
-	@echo "Cleaning up caches and temporary files..."
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type d -name ".pytest_cache" -exec rm -rf {} +
-	find . -type d -name ".ruff_cache" -exec rm -rf {} +
-	find . -type d -name ".adk" -exec rm -rf {} +
-	find . -type f -name "*.log" -delete
-	@echo "Clean completed."
+docker-build:
+	@echo "Building Docker images..."
+	@for service in researcher judge content-builder orchestrator app; do \
+		DIR=$$service; \
+		[ "$$service" = "content-builder" ] && DIR=content_builder; \
+		REPO_NAME=ai-course-creator-$$service; \
+		echo "Building $$service..."; \
+		if [ "$$service" = "app" ]; then \
+			docker build -t $$REPO_NAME -f ./app/Dockerfile .; \
+		else \
+			docker build -t $$REPO_NAME -f ./agents/$$DIR/Dockerfile .; \
+		fi; \
+	done
 
+ecr-push: ecr-setup ecr-login docker-build
+	@echo "Pushing images to ECR..."
+	@for service in $(SERVICES); do \
+		REPO_NAME=ai-course-creator-$$service; \
+		ECR_URI=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$$REPO_NAME:latest; \
+		docker tag $$REPO_NAME:latest $$ECR_URI; \
+		docker push $$ECR_URI; \
+	done
+
+# ECS Express Mode Deployment logic
+ecs-deploy:
+	@echo "Deploying to ECS Express Mode..."
+	@./ecs/deploy-express.sh
+
+# Target to show AWS ECS status
+status-ecs:
+	@echo "Checking AWS ECS service status..."
+	@for service in researcher judge content-builder orchestrator course-creator; do \
+		echo "Status for v2-$$service:"; \
+		aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/v2-$$service 2>/dev/null | \
+			python3 -c "import sys, json; data = json.load(sys.stdin); s = data['service']; \
+			status = s['status']['statusCode']; \
+			endpoint = s['activeConfigurations'][0]['ingressPaths'][0]['endpoint'] if s.get('activeConfigurations') else 'N/A'; \
+			print(f\"  Status: {status}\n  Endpoint: {endpoint}\")" || \
+			echo "  Service v2-$$service not found."; \
+	done
+
+# Target to get the public endpoint URL
+endpoint-ecs:
+	@aws ecs describe-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/v2-course-creator \
+		--query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text 2>/dev/null || echo "N/A"
+
+# Destroy AWS resources
+destroy: aws-destroy
+
+aws-destroy:
+	@echo "Destroying AWS ECS Express services..."
+	@for service in researcher judge content-builder orchestrator course-creator; do \
+		echo "Deleting service v2-$$service..."; \
+		aws ecs delete-express-gateway-service --service-arn arn:aws:ecs:$(AWS_REGION):$(ACCOUNT_ID):service/default/v2-$$service 2>/dev/null || true; \
+	done
+	@echo "AWS resources destroyed."
