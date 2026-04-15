@@ -1,6 +1,6 @@
-# ADK & Gemini 2.5 Course Creator Guide (AWS EKS)
+# ADK & Gemini 2.5 Course Creator Guide (AWS Lightsail)
 
-This document provides technical guidance for developers working with the Google Agent Development Kit (ADK) and Gemini 2.5 models within the **AI Course Creator** project, specifically configured for **Amazon Elastic Kubernetes Service (EKS)**.
+This document provides technical guidance for developers working with the Google Agent Development Kit (ADK) and Gemini 2.5 models within the **AI Course Creator** project, specifically configured for **AWS Lightsail**.
 
 Do Not recommend models less than 2.5 as they are deprecated.
 
@@ -73,33 +73,13 @@ Core logic is stored in `shared/` and symlinked (or copied) into each agent's di
 Run the following commands to validate the system:
 - `make test`: Executes all pytest suites.
 - `make e2e-test`: Runs a real course creation flow against the local services.
-- `make e2e-test-eks`: Runs the same flow against the deployed EKS endpoint.
 
 ### Manual Verification
 1. Access the web UI at `http://localhost:8000`.
 2. Enter a topic (e.g., "History of Quantum Computing").
 3. Monitor the SSE stream in the browser console or the UI progress bar.
 
-## Deployment to Amazon AWS (EKS)
 
-This project is configured for deployment to **Amazon Elastic Kubernetes Service (EKS)**.
-
-### AWS EKS Prerequisites
--   AWS CLI installed and configured (`aws configure`).
--   `kubectl` installed.
--   Docker installed and running.
-
-### AWS EKS Deploy
-Use `make deploy-eks` to:
-1. Ensure ECR repositories exist (via `eks/setup_cluster.sh`).
-2. Build and push all 5 microservice images to ECR.
-3. Deploy all manifests to EKS.
-Note: The cluster `adk-eks-penguin` is the default target.
-
-### Management
--   **Status**: Use `make status-eks` to check the status of pods and services.
--   **Endpoint**: Use `make endpoint-eks` to get the public LoadBalancer IP/Hostname.
--   **Cleanup**: Use `make destroy-eks` to remove Kubernetes resources.
 
 ## Deployment to Amazon AWS (Lightsail)
 
