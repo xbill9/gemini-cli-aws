@@ -11,7 +11,7 @@ export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images clean help e2e-test deploy-lightsail lightsail-status endpoint-lightsail destroy-lightsail e2e-test-lightsail
+.PHONY: install start run run-local restart-local local local-status frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images clean help e2e-test deploy-lightsail lightsail-status endpoint-lightsail destroy-lightsail e2e-test-lightsail
 
 help:
 	@echo "Available commands:"
@@ -20,6 +20,7 @@ help:
 	@echo "  stop                  - Stop all local services (alias for stop-local)"
 	@echo "  run                   - Start all services locally (alias for start-local)"
 	@echo "  local                 - Show local service URLs"
+	@echo "  local-status          - Check status of local processes"
 	@echo "  start-local           - Start all local services in background"
 	@echo "  stop-local            - Stop all local processes"
 	@echo "  test                  - Run all tests (pytest)"
@@ -203,7 +204,8 @@ local:
 	@echo "  Content Builder: http://localhost:8003"
 	@echo "  Orchestrator:    http://localhost:8004"
 
-status-local:check-local
+status-local: check-local
+local-status: check-local
 
 check-local:
 	@echo "Checking status of locally running agents and servers..."
