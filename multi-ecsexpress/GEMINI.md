@@ -1,10 +1,8 @@
-# ADK & Gemini 2.5 Course Creation Guide (AWS ECS)
+# ADK & Gemini 2.5 Course Creator Guide (AWS ECS Express)
 
-This document provides technical guidance for developers working with the Google Agent Development Kit (ADK) and Gemini 2.5 models within the **AI Course Creator** project, specifically targeting AWS ECS for deployment.
+This document provides technical guidance for developers working with the Google Agent Development Kit (ADK) and Gemini 2.5 models within the **AI Course Creator** project, specifically configured for **Amazon ECS (ECS Express)**.
 
 Do Not recommend models less than 2.5 as they are deprecated.
-
-Do not try to setup python venv locally.
 
 ## Project Overview: AI Course Creator
 
@@ -37,17 +35,19 @@ The AI Course Creator is a distributed multi-agent system designed to autonomous
 Each agent in this system is an independent ADK service. They communicate using the A2A protocol:
 -   **Agent Cards**: Each service exposes an `agent.json` (at `/a2a/agent/.well-known/agent-card.json`) describing its capabilities.
 -   **Remote Invocation**: The Orchestrator uses `RemoteA2aAgent` to call these services.
--   **URL Rewriting**: When deployed to AWS ECS behind a Load Balancer, `shared/a2a_utils.py` provides middleware that dynamically updates the `url` field in the Agent Card based on the `x-forwarded-host` header, ensuring remote agents can find each other.
+-   **URL Rewriting**: When deployed, the service URL is not known until deployment. `shared/a2a_utils.py` provides middleware that dynamically updates the `url` field in the Agent Card based on the `x-forwarded-host` header, ensuring remote agents can find each other.
 
 ### Security & Authentication
 
-Service-to-service communication can be secured using various methods. In an AWS environment, you might use IAM roles for tasks or internal VPC security groups.
--   **`shared/authenticated_httpx.py`**: Contains a client factory that can be configured for different authentication schemes.
--   **Note**: The Google Cloud Identity Token logic has been removed as this project now targets AWS ECS.
+Service-to-service communication is secured using Google Cloud Identity Tokens.
+-   **`shared/authenticated_httpx.py`**: Contains `create_authenticated_client()`, which returns an `httpx.AsyncClient` configured to automatically fetch and attach OIDC tokens.
+-   **Token Logic**:
+    -   **Locally**: Uses `gcloud auth print-identity-token` to simulate the environment.
+-   **Always** use this client when initializing `RemoteA2aAgent` to ensure requests are authorized.
 
 ### Shared Utilities & Docker Integration
 
-Core logic is stored in `shared/` and symlinked into each agent's directory to ensure consistency:
+Core logic is stored in `shared/` and used by each agent to ensure consistency:
 -   **`adk_app.py`**: A standardized FastAPI entry point used by all agent Dockerfiles. It handles agent loading, A2A registration, logging setup, and includes the A2A URL rewriting middleware.
 -   `authenticated_httpx.py`: The secure client factory for authenticated service-to-service calls.
 -   `a2a_utils.py`: The A2A URL rewriting middleware for dynamic service URLs.
@@ -62,27 +62,43 @@ Core logic is stored in `shared/` and symlinked into each agent's directory to e
 *   **Structured Output:** Always use Pydantic schemas (like `JudgeFeedback`) for agents that provide evaluation or data that must be parsed programmatically (e.g., by the `EscalationChecker`).
 *   **Context Management:** Use `LoopAgent`'s `max_iterations` (set to `2` in the orchestrator) to prevent infinite loops during the research phase.
 
+## Testing & Validation
+
+### Automated Testing
+Run the following commands to validate the system:
+- `make test`: Executes all pytest suites.
+- `make e2e-test`: Runs a real course creation flow against the local services.
+- `make e2e-test-ecsexpress`: Runs the same flow against the deployed ECS Express endpoint.
+
+### Manual Verification
+1. Access the web UI at `http://localhost:8000`.
+2. Enter a topic (e.g., "History of Quantum Computing").
+3. Monitor the SSE stream in the browser console or the UI progress bar.
+
+## Deployment to Amazon AWS (ECS Express)
+
+This project is configured for deployment to **Amazon ECS (ECS Express)**.
+
+### AWS ECS Express Deploy
+Use `make deploy-ecsexpress` to:
+1. Build and push all 5 microservice images to ECR.
+2. Deploy the services to ECS Express.
+Note: The cluster `adk-ecsexpress-cluster` and service `adk-ecsexpress-service` are the default targets.
+
+### Management
+-   **Status**: Use `make status-ecsexpress` to check the status of services.
+-   **Endpoint**: Use `make endpoint-ecsexpress` to get the public endpoint.
+-   **Cleanup**: Use `make destroy-ecsexpress` (or `make aws-destroy`) to remove resources.
+
 ## Developer Workflow
 
-1.  **Local Development:** Use `./run_local.sh` (or `make run`) to start the entire stack on ports 8000-8004.
+1.  **Local Development:** Use `make start` (or `./run_local.sh`) to start the entire stack on ports 8000-8004. Use `make stop` to shut down all processes.
 2.  **Adding Tools:** New tools should be added to the `tools` list in the respective agent's `agent.py` file.
 3.  **Refining Instructions:** Modify the `instruction` string in each agent's definition to tune their persona and output quality.
 4.  **Testing:** Run `make test` to execute the full suite of backend and integration tests.
-
-## Deployment to AWS ECS Fargate
-
-The project is configured for deployment to AWS ECS (Fargate).
-
-### ECS Deployment
--   **Task Definitions**: Located in `ecs/task_definitions/`.
--   **Deploy Command**: `make deploy-ecs`.
--   **Note**: All services (Researcher, Judge, Content Builder, Orchestrator, and App) are deployed as independent Fargate tasks.
-
--   **Container Images**: Should be built and pushed to AWS ECR.
 
 ## Resources
 
 -   [Google ADK Documentation](https://github.com/google/adk)
 -   [Gemini API Documentation](https://ai.google.dev/gemini-api/docs)
 -   [A2A Protocol Specification](https://github.com/google/adk/blob/main/docs/a2a.md)
--   [AWS ECS Documentation](https://docs.aws.amazon.com/ecs/)

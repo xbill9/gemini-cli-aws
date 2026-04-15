@@ -1,6 +1,6 @@
-# AI Course Creator (Distributed Multi-Agent System)
+# AI Course Creator (Distributed Multi-Agent System - AWS ECS Express)
 
-A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
+A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol, deployed on **Amazon ECS (ECS Express)**. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
 
 ## Architecture
 
@@ -15,15 +15,14 @@ This project uses a distributed microservices architecture where each agent runs
 ## Project Structure
 
 ```
-multi-agent/
+multi-ecsexpress/
 ├── agents/
 │   ├── orchestrator/     # Workflow management & remote agent connections
 │   ├── researcher/       # Information gathering (Google Search)
 │   ├── judge/            # Quality control (Structured Feedback)
 │   └── content_builder/  # Content generation (Markdown)
 ├── app/                  # Web application (FastAPI + Vanilla TS Frontend)
-├── ecs/                  # AWS ECS Task Definitions
-├── shared/               # Shared utilities (Symlinked into agents)
+├── shared/               # Shared utilities (Used by agents and app)
 │   ├── a2a_utils.py      # A2A URL rewriting middleware
 │   ├── adk_app.py        # Standardized ADK FastAPI wrapper
 │   ├── authenticated_httpx.py # Service-to-service auth utilities
@@ -38,15 +37,15 @@ multi-agent/
 
 *   **Python 3.13+**
 *   **Node.js & npm**: For frontend development and builds.
-*   **pip** or **uv**: For dependency management.
-*   **AWS CLI**: For deployment to ECS (Fargate).
-*   **Google API Key**: Required for Gemini models.
+*   **Docker**: For building and pushing images.
+*   **AWS CLI**: For managing AWS resources.
+*   **Google API Key**: Required for Gemini.
 
 ## Quick Start
 
 1.  **Initialize Environment:**
     ```bash
-    # Set up .env with your GOOGLE_API_KEY
+    # Set up .env
     ./set_env.sh
     ```
 
@@ -58,9 +57,18 @@ multi-agent/
 
 3.  **Run Locally:**
     ```bash
-    make run
+    # Option 1: Using make (Recommended)
+    make start
+
+    # Option 2: Using the legacy script
+    ./run_local.sh
     ```
     This starts all agents and the web app. The Researcher, Judge, and Content Builder run on ports 8001-8003, the Orchestrator on 8004, and the Web App on 8000.
+
+    To stop all services:
+    ```bash
+    make stop
+    ```
 
 4.  **Access the App:**
     -   **http://localhost:8000**: Main entry point (FastAPI serving the built frontend).
@@ -68,6 +76,7 @@ multi-agent/
 
 ## Testing
 
+### Unit and Agent Tests
 Run agent-specific tests to verify individual components:
 ```bash
 ./research_test.sh
@@ -78,16 +87,39 @@ Or run the full suite:
 make test
 ```
 
-## Deployment
+### End-to-End (E2E) Testing
+You can run automated E2E tests against the local or remote environment:
+```bash
+# Test local environment (requires all services running)
+make e2e-test
 
-The system is designed to be deployed to **AWS ECS (Fargate)**.
+# Test remote ECS Express environment
+make e2e-test-ecsexpress
+```
+
+## Deployment to AWS ECS Express
+
+The system is configured for deployment to **Amazon ECS (ECS Express)**.
 
 1.  **Configure AWS:**
-    Ensure your AWS CLI is configured with the necessary permissions.
-
-2.  **Deploy to ECS:**
     ```bash
-    make deploy-ecs
+    aws configure
+    ```
+
+2.  **Run Deployment:**
+    ```bash
+    # Build and push images to ECR
+    make deploy-ecsexpress
+    ```
+
+3.  **Check Status:**
+    ```bash
+    make status-ecsexpress
+    ```
+
+4.  **Get Endpoint:**
+    ```bash
+    make endpoint-ecsexpress
     ```
 
 ## Recommended Models
