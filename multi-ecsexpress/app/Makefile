@@ -6,11 +6,16 @@ PYTHON = python3
 PIP = pip3
 PORT ?= 8000
 
+# Cloud Run Deployment Variables
+REGION       ?= us-central1
+SERVICE_NAME ?= course-creator
+ORCHESTRATOR_URL = $(shell gcloud run services describe orchestrator --region $(REGION) --format='value(status.url)' --project $(PROJECT_ID) 2>/dev/null)
+
 # Agent context (for testing)
-AGENT_NAME ?= course-creator
+AGENT_NAME ?= $(SERVICE_NAME)
 TOPIC ?= The impact of AI on software engineering
 
-.PHONY: install build-frontend run start stop lint format test check clean help deploy-ecs status check-env a2a test-invoke test-local
+.PHONY: install build-frontend run start stop lint format test check clean help deploy endpoint status check-env a2a test-invoke test-local
 
 help:
 	@echo "Available commands:"
@@ -24,9 +29,11 @@ help:
 	@echo "  test             - Run all project tests from the root directory"
 	@echo "  check            - Run lint and test"
 	@echo "  clean            - Remove temporary files, caches, and build artifacts"
-	@echo "  deploy-ecs       - Deploy the web app to AWS ECS"
-	@echo "  status           - Show the status of the local service"
-	@echo "  test-invoke      - Test the chat endpoint (prefers local if not specified)"
+	@echo "  deploy           - Deploy the web app to Cloud Run"
+	@echo "  endpoint         - Show the URL of the deployed Cloud Run service"
+	@echo "  status           - Show the status of the local and deployed service"
+	@echo "  a2a              - Fetch the A2A Agent Card"
+	@echo "  test-invoke      - Test the chat endpoint (prefers Cloud Run if deployed)"
 	@echo "  test-local       - Test the local chat endpoint"
 
 check-env:
@@ -83,18 +90,6 @@ test-app:
 
 check: lint test test-app
 
-deploy-ecs:
-	@echo "Deploying to AWS ECS..."
-	# Add ECS deployment logic here
-
-status:
-	@echo "--- Local Status (Port $(PORT)) ---"
-	@if lsof -Pi :$(PORT) -sTCP:LISTEN -t >/dev/null; then \
-		echo "App is RUNNING on port $(PORT)"; \
-	else \
-		echo "App is NOT RUNNING locally"; \
-	fi
-
 clean:
 	@echo "Cleaning up caches and temporary files..."
 	find . -type d -name "__pycache__" -exec rm -rf {} +
@@ -104,7 +99,10 @@ clean:
 	rm -rf app.pid backend.log
 	@echo "Clean completed."
 
-test-invoke: test-local
+a2a:
+	@if [ -z "$(SERVICE_URL)" ]; then echo "Error: SERVICE_URL is not set. Deploy the app first."; exit 1; fi
+	@echo "Fetching Agent Card for '$(AGENT_NAME)' from $(SERVICE_URL)..."
+	curl -s $(SERVICE_URL)/a2a/$(AGENT_NAME)/.well-known/agent-card.json | jq .
 
 test-local:
 	@echo "Testing local chat endpoint at http://localhost:$(PORT)/api/chat_stream with topic: '$(TOPIC)'..."; \

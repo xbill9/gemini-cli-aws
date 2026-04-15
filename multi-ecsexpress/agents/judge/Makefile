@@ -4,7 +4,6 @@ SHELL := /bin/bash
 PYTHON = python3
 PIP = pip3
 PORT = 8002
-AGENT_NAME = judge
 
 # Find the project root directory
 PROJECT_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
@@ -16,7 +15,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install run start stop lint format test deploy-ecs clean a2a test-invoke test-local status check-env
+.PHONY: help install run start stop lint format test deploy clean a2a test-invoke test-local endpoint status check-env logs
 
 check-env:
 	@if [ -z "$(GOOGLE_API_KEY)" ]; then \
@@ -30,22 +29,17 @@ help:
 	@echo "  run          - Run the agent locally on port $(PORT)"
 	@echo "  start        - Start the agent in background"
 	@echo "  stop         - Stop the local agent"
-	@echo "  status       - Check local service status"
+	@echo "  status       - Check local and remote service status"
 	@echo "  lint         - Run linting (ruff)"
 	@echo "  format       - Run formatting (ruff format)"
 	@echo "  test         - Run tests (pytest)"
-	@echo "  deploy-ecs   - Deploy to AWS ECS"
-	@echo "  test-invoke  - Test the agent endpoint"
-	@echo "  test-local   - Test the local agent endpoint"
+	@echo "  a2a          - Fetch the A2A Agent Card"
+	@echo "  test-invoke  - Test agent invocation via A2A"
+	@echo "  test-local   - Test the local agent endpoint via A2A"
 	@echo "  clean        - Remove temporary files and cache"
-
-status:
-	@echo "--- Local Status (Port $(PORT)) ---"
-	@if lsof -Pi :$(PORT) -sTCP:LISTEN -t >/dev/null; then \
-		echo "Agent is RUNNING on port $(PORT)"; \
-	else \
-		echo "Agent is NOT RUNNING locally"; \
-	fi
+	@echo "  deploy       - Deploy to Google Cloud Run"
+	@echo "  endpoint     - Show the deployed service URL"
+	@echo "  logs         - Show Cloud Run logs"
 
 install:
 	$(PIP) install -e .
@@ -91,14 +85,23 @@ clean:
 	rm -rf .pytest_cache
 	rm -rf .ruff_cache
 
-deploy-ecs:
-	@echo "Deploying to AWS ECS..."
-	# Add ECS deployment logic here
+# Deployment Configuration
+# Usage: make deploy GOOGLE_CLOUD_PROJECT=your-project REGION=us-central1
+GENAI_MODEL ?= gemini-2.5-flash
+# GOOGLE_API_KEY should be set in your environment
 
-test-invoke: test-local
+# A2A Configuration
+AGENT_NAME ?= judge
+TOPIC ?= The impact of AI on software engineering
+
+a2a:
+	@if [ -z "$(SERVICE_URL)" ]; then echo "Error: SERVICE_URL is not set. Deploy the agent first or provide SERVICE_URL=..."; exit 1; fi
+	@echo "Fetching Agent Card for '$(AGENT_NAME)' from $(SERVICE_URL)..."
+	curl -s $(SERVICE_URL)/a2a/$(AGENT_NAME)/.well-known/agent-card.json | jq .
 
 test-local:
 	@echo "Testing local endpoint at http://localhost:$(PORT)/a2a/$(AGENT_NAME) with topic: '$(TOPIC)'..."; \
 	curl -s -X POST http://localhost:$(PORT)/a2a/$(AGENT_NAME) \
 	  -H "Content-Type: application/json" \
 	  -d '{"jsonrpc": "2.0", "id": "1", "method": "message/send", "params": {"contextId": "test-session", "message": {"role": "user", "parts": [{"text": "$(TOPIC)"}], "messageId": "m1"}}}' | jq .
+

@@ -24,8 +24,6 @@ The included `Makefile` provides targets for common tasks:
 - `make test`: Run the test suite using `pytest`.
 - `make lint`: Run code linting with `ruff`.
 - `make format`: Format code with `ruff`.
-- `make deploy-ecs`: Deploy to AWS ECS.
-- `make logs`: View logs (CloudWatch).
 
 ## API Integration
 

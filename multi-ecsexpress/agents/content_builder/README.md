@@ -54,13 +54,11 @@ The agent will start on port `8003` by default.
 
 ## Deployment
 
-The agent is designed to be deployed to **AWS ECS**.
 
 ```bash
-- `make deploy-ecs`: Deploy to AWS ECS.
+make deploy
 ```
 
-This will build the container using AWS CodeBuild and deploy it to AWS ECS with the necessary environment variables and service configurations.
 
 ## API Specification
 

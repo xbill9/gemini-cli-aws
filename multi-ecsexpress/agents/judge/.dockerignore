@@ -49,5 +49,6 @@ htmlcov/
 # Git and configuration
 .git
 .gitignore
+.gcloudignore
 Makefile
 Dockerfile

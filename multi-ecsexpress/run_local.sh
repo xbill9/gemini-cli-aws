@@ -14,6 +14,9 @@ if [ -f ".env" ]; then
   source .env
 fi
 export PYTHONPATH=$PYTHONPATH:.
+export GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}"
+export GOOGLE_CLOUD_LOCATION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
+export GOOGLE_GENAI_USE_VERTEXAI="False"
 export LOG_LEVEL=DEBUG
 export GENAI_MODEL=gemini-2.5-flash
 

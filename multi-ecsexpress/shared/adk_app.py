@@ -127,6 +127,11 @@ def main(
             extra_plugins=extra_plugins,
         )
 
+        @app.get("/")
+        async def root():
+            """Root endpoint for health checks."""
+            return {"status": "ok", "service": "adk-agent-service"}
+
         if a2a:
             app.add_middleware(BaseHTTPMiddleware, dispatch=a2a_card_dispatch)
 

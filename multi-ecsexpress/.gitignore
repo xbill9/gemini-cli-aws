@@ -21,33 +21,9 @@ Thumbs.db
 venv/
 *.swp
 *.bak
-level_3-lightsail/.aws_creds
-level_3-fargate/.aws_creds
-adkui-lightsail/.aws_creds
-adkui-fargate/.aws_creds
-level_3-lightsail/.requirements_installed
-level_3-fargate/task-definition.json
-
-level_3-fargate/.requirements_installed
-level_3-fargate/backend/app/biometric_agent/.adk/
-level_3-fargate/backend/app/biometric_agent/__pycache__/
-
-adkui/k8s-deployment.yaml
-adkui-eks/k8s-deployment.yaml
-
 level_3-ecsexpress/backend/app/biometric_agent/.adk/
 level_3-ecsexpress/backend/app/biometric_agent/__pycache__/
 level_3-ecsexpress/.requirements_installed
-
-level_3-eks/backend/app/biometric_agent/.adk/
-level_3-eks/backend/app/biometric_agent/__pycache__/
-level_3-eks/k8s-deployment.yaml
-level_3-eks/cert.pem
-level_3-eks/key.pem
-
-gemini31-lightsail/__pycache__/
-gemini31-lightsail/backend/app/__pycache__/
-gemini31-lightsail/backend/app/biometric_agent/__pycache__/
 
 __pycache__
 

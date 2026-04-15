@@ -22,7 +22,7 @@ The **Researcher Agent** is a specialized microservice designed to gather compre
 ### Prerequisites
 
 - Python 3.13+
-- A AWS Account with the Generative AI API enabled.
+- A Google Cloud Project with the Generative AI API enabled.
 - A valid `GOOGLE_API_KEY` or configured Google Cloud credentials.
 
 ### Installation
@@ -63,9 +63,8 @@ make test-invoke TOPIC="The impact of AI on software engineering"
 
 ## Deployment
 
-The agent is designed to be deployed to AWS ECS. Use the provided `Makefile` target for deployment:
 ```bash
-- `make deploy-ecs`: Deploy to AWS ECS.
+make deploy
 ```
 
 ## Agent Card (A2A)

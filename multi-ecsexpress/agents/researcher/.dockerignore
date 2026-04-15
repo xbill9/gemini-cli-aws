@@ -36,6 +36,7 @@ tests/
 # Project Specific
 .git/
 .gitignore
+.gcloudignore
 Dockerfile
 Makefile
 .env

@@ -10,6 +10,8 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "python-json-logger",
+    "google-cloud-logging",
+    "opentelemetry-exporter-gcp-trace",
 ]
 
 [project.optional-dependencies]

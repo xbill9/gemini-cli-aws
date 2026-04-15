@@ -1,54 +1,77 @@
 # AI Course Creator - Web Application
 
-This directory contains the main web application for the AI Course Creator project. It serves as the frontend for users and orchestrates communication between specialized agents.
+This module provides the web-based interface for the AI Course Creator multi-agent system. It consists of a FastAPI backend and a Vanilla TypeScript frontend.
 
 ## Architecture
 
-The application is built with a decoupled architecture:
+The web application serves as a bridge between the user and the autonomous agent system:
 
-*   **Backend:** A FastAPI-based server that handles API requests, manages sessions, and streams real-time updates from agents using Server-Sent Events (SSE).
-*   **Frontend:** A modern, single-page application built with Vanilla TypeScript and Vite. It provides a responsive interface for initiating course creation and monitoring progress.
-*   **Agent Integration:** Uses the **Agent-to-Agent (A2A)** protocol to communicate with the Orchestrator agent, which in turn manages specialized agents (Researcher, Judge, Content Builder).
+1.  **Frontend (Vite + TypeScript):** A lightweight, interactive UI that sends user requests to the backend and handles real-time Server-Sent Events (SSE) to display agent progress and the final generated course.
+2.  **Backend (FastAPI):** Orchestrates communication with the remote ADK agents using the A2A (Agent-to-Agent) protocol. It proxies streaming responses from the agents and provides session management.
 
-## Features
+## Key Features
 
--   **Real-time Streaming:** View the agent's research and decision-making process as it happens.
--   **Structured Course Generation:** Automatically generates high-quality Markdown course modules based on validated research.
--   **Cloud-Native:** Built-in support for OpenTelemetry tracing, JSON logging, and containerized deployment (AWS ECS).
+-   **Streaming Progress:** Real-time feedback from specialized `progress_` agents (e.g., "Researcher is gathering information...").
+-   **Content Deduplication:** Advanced string merging logic to handle overlapping text fragments from streaming agent outputs.
+-   **Session Management:** Persistent session handling for multi-turn interactions with the ADK server.
+-   **Cloud-Native:** Built-in support for OpenTelemetry tracing (Google Cloud Trace), JSON logging, and containerized deployment.
+
+## Tech Stack
+
+-   **Backend:** Python 3.12+, FastAPI, Uvicorn, `httpx`, `httpx_sse`.
+-   **Frontend:** TypeScript, Vite, CSS, `marked` (for Markdown rendering).
+-   **Observability:** OpenTelemetry, Python JSON Logger.
+
+## Configuration
+
+The backend is configured via environment variables:
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `AGENT_SERVER_URL` | **(Required)** The URL of the ADK agent server (e.g., Orchestrator). | - |
+| `AGENT_NAME` | The name of the agent to interact with. | `agent` |
+| `PORT` | The port to run the FastAPI server on. | `8080` |
+| `LOG_LEVEL` | Logging verbosity (`debug`, `info`, `warning`, `error`). | `info` |
 
 ## Development
 
 ### Prerequisites
 
--   Python 3.13+
--   Node.js & npm
+-   Python 3.12+
+-   Node.js & npm (for frontend)
 
-### Setup
+### Frontend Build
 
-1.  **Install Dependencies:**
+1.  Navigate to the `frontend/` directory:
     ```bash
-    make install
+    cd frontend
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Build the production distribution:
+    ```bash
+    npm run build
+    ```
+    *This creates a `dist/` directory at the root of the `app` module, which the FastAPI backend serves as static files.*
+
+### Backend Setup
+
+1.  Install Python dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+2.  Run the application locally:
+    ```bash
+    export AGENT_SERVER_URL=http://localhost:8000
+    python main.py
     ```
 
-2.  **Run Locally:**
-    ```bash
-    # Start the FastAPI backend and Vite dev server
-    make run
-    ```
-    The application will be available at:
-    -   Frontend (Dev): http://localhost:5173
-    -   Backend: http://localhost:8000
+## Testing
 
-## Deployment
+The module includes a comprehensive test suite using `pytest`.
 
-The application is containerized and ready for deployment to **AWS ECS**.
-
-1.  **Build Frontend:**
-    ```bash
-    make build-frontend
-    ```
-
-2.  **Deploy to ECS:**
-    ```bash
-    make deploy-ecs
-    ```
+```bash
+make test
+```

@@ -10,6 +10,8 @@ dependencies = [
     "click",
     "google-adk",
     "python-json-logger",
+    "google-cloud-logging",
+    "opentelemetry-exporter-gcp-trace",
     "httpx",
 ]
 

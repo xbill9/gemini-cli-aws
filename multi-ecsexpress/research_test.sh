@@ -1,4 +1,4 @@
-# Use the Standard Python 3.13
+# Use the Google Cloud SDK bundled Python 3.13
 PYTHON_CMD=/usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3
 if [ ! -f "$PYTHON_CMD" ]; then
   PYTHON_CMD=python3
