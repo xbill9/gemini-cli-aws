@@ -11,7 +11,7 @@ export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-eks destroy-eks status-eks endpoint-eks clean help e2e-test e2e-test-eks deploy-lightsail lightsail-status endpoint-lightsail destroy-lightsail
+.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images clean help e2e-test deploy-lightsail lightsail-status endpoint-lightsail destroy-lightsail e2e-test-lightsail
 
 help:
 	@echo "Available commands:"
@@ -24,6 +24,7 @@ help:
 	@echo "  stop-local            - Stop all local processes"
 	@echo "  test                  - Run all tests (pytest)"
 	@echo "  e2e-test              - Run end-to-end test against localhost"
+	@echo "  e2e-test-lightsail    - Run end-to-end test against Lightsail endpoint"
 	@echo "  lint                  - Run linting checks (ruff)"
 	@echo "  deploy                - Deploy all services to AWS Lightsail"
 	@echo "  status                - Show Lightsail service status"
@@ -33,11 +34,6 @@ help:
 	@echo "  lightsail-status      - Show Lightsail service status"
 	@echo "  endpoint-lightsail    - Show Lightsail service endpoint"
 	@echo "  destroy-lightsail     - Delete Lightsail service"
-	@echo "  deploy-eks            - Deploy all services to AWS EKS"
-	@echo "  destroy-eks           - Delete EKS resources"
-	@echo "  status-eks            - Show EKS status"
-	@echo "  endpoint-eks          - Show EKS service endpoint"
-	@echo "  e2e-test-eks          - Run end-to-end test against EKS endpoint"
 	@echo "  clean                 - Remove caches and logs"
 
 TEST_URL ?= http://localhost:8000
@@ -61,14 +57,14 @@ e2e-test:
 	fi
 	@echo "\nE2E Test Completed successfully!"
 
-e2e-test-eks:
-	@echo "Fetching EKS endpoint..."
-	@ENDPOINT=$$(kubectl get svc course-creator -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null); \
+e2e-test-lightsail:
+	@echo "Fetching Lightsail endpoint..."
+	@ENDPOINT=$$(make endpoint-lightsail); \
 	if [ -z "$$ENDPOINT" ]; then \
-		echo "Error: EKS endpoint not found. Check if the service is deployed."; \
+		echo "Error: Lightsail endpoint not found. Check if the service is deployed."; \
 		exit 1; \
 	fi; \
-	$(MAKE) e2e-test TEST_URL=http://$$ENDPOINT
+	$(MAKE) e2e-test TEST_URL=$$ENDPOINT
 
 install:
 	@echo "Installing root dependencies..."
@@ -195,25 +191,7 @@ endpoint-lightsail:
                 --query 'containerServices[0].url' \
                 --output text
 
-deploy-eks:
-	chmod +x eks/*.sh
-	./eks/deploy-eks.sh
-
-destroy-eks:
-	@echo "Destroying EKS resources..."
-	kubectl delete -f eks/manifests.yaml || true
-	kubectl delete secret adk-secrets || true
-	@echo "Note: This does not delete the EKS cluster or ECR repos."
-
 status: lightsail-status
-
-status-eks:
-	@echo "Checking EKS Deployment status..."
-	@kubectl get deployments
-	@kubectl get pods
-	@kubectl get services
-
-eks-status: status-eks
 
 local:
 	@echo "--- Local Service URLs ---"
@@ -225,6 +203,8 @@ local:
 	@echo "  Content Builder: http://localhost:8003"
 	@echo "  Orchestrator:    http://localhost:8004"
 
+status-local:check-local
+
 check-local:
 	@echo "Checking status of locally running agents and servers..."
 	@echo "--- Network Status ---"
@@ -233,11 +213,6 @@ check-local:
 	@ps aux | grep -E "[s]hared[.]adk_app|[m]ain[.]py|[v]ite" || echo "No matching processes found."
 
 endpoint: endpoint-lightsail
-
-endpoint-eks:
-	@echo "--- AWS EKS Endpoint ---"
-	@kubectl get svc course-creator -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Pending..."
-	@echo ""
 
 clean:
 	@echo "Cleaning up caches and temporary files..."
