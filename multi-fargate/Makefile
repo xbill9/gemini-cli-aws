@@ -10,7 +10,7 @@ export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-fargate destroy-fargate aws-destroy fargate-status status-fargate endpoint-fargate clean help e2e-test e2e-test-fargate
+.PHONY: install start run run-local restart-local local local-status frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-fargate destroy-fargate aws-destroy fargate-status status-fargate endpoint-fargate clean help e2e-test e2e-test-fargate
 
 help:
 	@echo "Available commands:"
@@ -19,6 +19,7 @@ help:
 	@echo "  stop                  - Stop all local services (alias for stop-local)"
 	@echo "  run                   - Start all services locally (alias for start-local)"
 	@echo "  local                 - Show local service URLs"
+	@echo "  local-status          - Check status of locally running processes"
 	@echo "  start-local           - Start all local services in background"
 	@echo "  stop-local            - Stop all local processes"
 	@echo "  test                  - Run all tests (pytest)"
@@ -112,19 +113,19 @@ orchestrator-local:
 
 agents-local: stop-local
 	@echo "Starting all agents in background..."
-	@nohup $(MAKE) researcher-local > researcher.log 2>&1 &
-	@nohup $(MAKE) judge-local > judge.log 2>&1 &
-	@nohup $(MAKE) content-builder-local > content_builder.log 2>&1 &
+	@setsid $(MAKE) researcher-local > researcher.log 2>&1 &
+	@setsid $(MAKE) judge-local > judge.log 2>&1 &
+	@setsid $(MAKE) content-builder-local > content_builder.log 2>&1 &
 	@echo "Waiting for sub-agents to start..."
 	@sleep 5
-	@nohup $(MAKE) orchestrator-local > orchestrator.log 2>&1 &
+	@setsid $(MAKE) orchestrator-local > orchestrator.log 2>&1 &
 	@echo "All agents started. Logs: researcher.log, judge.log, content_builder.log, orchestrator.log"
 
 start-local: check-frontend agents-local
 	@echo "Starting App Backend in background..."
-	@nohup $(MAKE) backend-local > backend.log 2>&1 &
+	@setsid $(MAKE) backend-local > backend.log 2>&1 &
 	@echo "Starting Frontend dev server in background..."
-	@nohup $(MAKE) frontend-local > frontend.log 2>&1 &
+	@setsid $(MAKE) frontend-local > frontend.log 2>&1 &
 	@echo "All services started. Logs: researcher.log, judge.log, content_builder.log, orchestrator.log, backend.log, frontend.log"
 	@echo "Frontend: http://localhost:5173"
 	@echo "Backend:  http://localhost:8000"
@@ -229,6 +230,23 @@ check-local:
 	@netstat -tulnp 2>/dev/null | grep -E "8000|8001|8002|8003|8004|5173" || echo "No services listening on expected ports (8000-8004, 5173)."
 	@echo "--- Process Status ---"
 	@ps aux | grep -E "[s]hared[.]adk_app|[m]ain[.]py|[v]ite" || echo "No matching processes found."
+
+local-status:
+	@echo "--- Local Process Status ---"
+	@printf "%-20s %-10s %-10s %-10s\n" "Service" "Port" "Status" "PID"
+	@for service in "Frontend:5173:[v]ite" "Backend:8000:[m]ain.py" "Researcher:8001:agents/[r]esearcher" "Judge:8002:agents/[j]udge" "Builder:8003:agents/[c]ontent_builder" "Orchestrator:8004:agents/[o]rchestrator"; do \
+		NAME=$$(echo $$service | cut -d: -f1); \
+		PORT=$$(echo $$service | cut -d: -f2); \
+		PATTERN=$$(echo $$service | cut -d: -f3); \
+		PID=$$(pgrep -f "$$PATTERN" | head -n 1); \
+		if [ -n "$$PID" ]; then \
+			STATUS="RUNNING"; \
+		else \
+			STATUS="STOPPED"; \
+			PID="-"; \
+		fi; \
+		printf "%-20s %-10s %-10s %-10s\n" "$$NAME" "$$PORT" "$$STATUS" "$$PID"; \
+	done
 
 endpoint: endpoint-fargate
 

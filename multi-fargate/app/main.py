@@ -10,7 +10,7 @@ from a2a_utils import a2a_card_dispatch
 from authenticated_httpx import create_authenticated_client
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from httpx_sse import aconnect_sse
 from logging_config import get_uvicorn_log_config, setup_logging
@@ -365,11 +365,20 @@ async def chat_stream(request: SimpleChatRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "CORRECT-APP-V3-FIXED"}
 
 
 # Mount frontend from the Vite build directory
 frontend_path = os.path.join(os.path.dirname(__file__), "dist")
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    """Explicitly serve index.html for the root route."""
+    index_path = os.path.join(frontend_path, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return HTMLResponse(content="<h1>Frontend not found</h1>", status_code=404)
+
 if not os.path.exists(frontend_path):
     # For local development we might not have dist, but for Cloud Run we MUST
     if os.getenv("K_SERVICE"):
