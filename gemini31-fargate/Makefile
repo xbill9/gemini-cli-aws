@@ -51,7 +51,7 @@ mock:
 
 test:
 	@echo "Running backend and connectivity tests..."
-	pytest test_live_connection.py test_ws_backend.py test_ws_backend_v2.py backend/app/biometric_agent/test_agent.py
+	python3 -m pytest test_live_connection.py test_ws_backend.py test_ws_backend_v2.py backend/app/biometric_agent/test_agent.py
 
 lint:
 	@echo "Linting Python code with Ruff..."
