@@ -107,14 +107,25 @@ ADK provides a bidirectional streaming interface over WebSockets.
 
 ## Developer Workflow
 
-This project uses a unified **Makefile** to manage the entire development lifecycle.
+This project uses a unified **Makefile** and scripts to manage the entire development lifecycle.
 
 1.  **Setup**: Run `make setup` to initialize the environment and install dependencies.
-2.  **Local Testing**: Use `make mock` to test the frontend and backend orchestration without consuming Gemini API credits.
-3.  **Automated Testing**: Run `make test` to execute all backend and connectivity tests.
-4.  **Linting**: Run `make lint` to ensure code quality across Python and Frontend.
-5.  **Running**: Use `make run` for the backend and `make frontend-dev` for the frontend.
-6.  **Deployment**: Use `make deploy` to deploy to Amazon ECS Fargate.
+2.  **Verify Infrastructure**: Run `./scripts/verify_setup.sh` to check your configuration.
+3.  **Running the Application**:
+    *   `make run`: Starts the backend server.
+    *   `make frontend-dev`: Starts the frontend development server.
+4.  **Development & Testing**:
+    *   **Mock Mode**: Use `make mock` or `make run-mock` to run a mock backend for frontend development.
+    *   **Automated Testing**: Run `make test` to execute all backend and connectivity tests.
+    *   **Agent-specific Tests**: Run `./testadk.sh` to test the `biometric_agent`.
+    *   **Model Availability**: Use `./testmodels.sh` to verify model connectivity.
+5.  **Linting**: Run `make lint` to ensure code quality across Python and Frontend.
+
+## Deployment (Amazon ECS Fargate)
+
+1.  **Deploy**: Run `make deploy` to build and deploy the container to AWS Fargate.
+2.  **Check Status**: Use `make status` to monitor the deployment status of the ECS service.
+3.  **Get Endpoint**: Once deployed, run `make endpoint` to retrieve the public URL of the application.
 
 
 ## Migrating from Gemini 2.5 Flash Live

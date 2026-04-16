@@ -102,4 +102,3 @@ To deploy the system to Amazon ECS Fargate, ensure you have the [AWS CLI](https:
     ```
 
 Ensure your `MODEL_ID` is set to `gemini-3.1-flash-live-preview` in the environment variables within `deploy-fargate.sh`.
-
