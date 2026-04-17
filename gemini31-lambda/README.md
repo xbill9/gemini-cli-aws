@@ -83,19 +83,19 @@ The system acts as a "Security Interrogator" that requires a specific sequence o
 
 ## Deployment
 
-### Amazon Lightsail (AWS)
+### AWS Lambda (AWS)
 
-To deploy the system to Amazon Lightsail, ensure you have the [AWS CLI](https://aws.amazon.com/cli/) installed and configured with appropriate permissions.
+To deploy the system to AWS Lambda, ensure you have the [AWS CLI](https://aws.amazon.com/cli/) installed and configured with appropriate permissions.
 
 1.  **Export AWS Credentials**:
     ```bash
     make deploy
     ```
-    This target runs `save-aws-creds.sh` and `deploy-lightsail.sh` sequentially.
+    This target runs `save-aws-creds.sh` and `deploy-lambda.sh` sequentially.
 
 2.  **Manual Deployment Steps**:
     -   **Save Credentials**: `./save-aws-creds.sh`
-    -   **Deploy to Lightsail**: `./deploy-lightsail.sh`
+    -   **Deploy to Lambda**: `./deploy-lambda.sh`
 
 3.  **Monitor Deployment**:
     ```bash
@@ -107,4 +107,4 @@ To deploy the system to Amazon Lightsail, ensure you have the [AWS CLI](https://
     make endpoint
     ```
 
-Ensure your `MODEL_ID` is set to `gemini-3.1-flash-live-preview` in the environment variables within `deploy-lightsail.sh`.
+Ensure your `MODEL_ID` is set to `gemini-3.1-flash-live-preview` in the environment variables within `deploy-lambda.sh`.

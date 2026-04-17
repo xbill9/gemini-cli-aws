@@ -1,3 +1,4 @@
+# STAGE 1: Build the frontend assets
 FROM node:20-slim as builder
 
 # Set the working directory for our build process
@@ -17,6 +18,9 @@ RUN npm --prefix frontend run build
 # STAGE 2: Build the Python Production Image
 # This stage creates the final, lean container with our Python app and the built frontend.
 FROM python:3.13-slim
+
+# Copy AWS Lambda Web Adapter
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.0 /lambda-adapter /opt/extensions/lambda-adapter
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -41,7 +45,7 @@ COPY backend/app/ .
 # When main.py is in /app, "../../" resolves to "/", so it looks for /frontend/dist
 COPY --from=builder /app/frontend/dist /frontend/dist
 
-# Cloud Run injects a PORT environment variable, which your main.py uses (defaults to 8080).
+# EXPOSE 8080
 EXPOSE 8080
 
 # Set the command to run the application.

@@ -8,7 +8,7 @@ export
 
 # AWS Configuration
 AWS_REGION ?= us-east-1
-SERVICE_NAME ?= biometric-scout-lambda
+SERVICE_NAME ?= biometric-scout-v3
 IMAGE_NAME ?= biometric-scout-image
 
 # Derived AWS variables
@@ -21,51 +21,70 @@ FULL_IMAGE_NAME := $(ECR_REPO_URL):$(IMAGE_TAG)
 LAMBDA_ROLE_NAME := BiometricLambdaExecutionRole
 LAMBDA_ROLE_ARN := arn:aws:iam::$(AWS_ACCOUNT_ID):role/$(LAMBDA_ROLE_NAME)
 
-.PHONY: clean test lint deploy run endpoint frontend mock adk testadk status aws-destroy docker-build ecr-create ecr-login push-ecr lambda iam-setup save-creds print-vars
+.PHONY: all install run build test lint format type-check status git-status lambda-status endpoint pull push clean deploy docker-build ecr-create ecr-login push-ecr lambda iam-setup aws-destroy frontend mock adk testadk save-creds
 
-clean:
-	@echo "Cleaning up logs, caches, and temporary files..."
-	find . -type f -name "*.log" -delete 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".adk" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	rm -rf frontend/dist 2>/dev/null || true
-	@echo "Clean completed."
+all: install run
 
-test:
-	python -m pytest
+# Install dependencies
+install:
+	pip install -r requirements.txt
+	cd frontend && npm install
 
-lint:
-	ruff check .
-	ruff format --check .
-	cd frontend && npm run lint
+# Run the server locally
+run:
+	python backend/app/main.py
 
-frontend:
-	cd frontend && npm install && npm run build
+# Target to show both git and Lambda status
+status: lambda-status
 
-# --- AWS Lambda Deployment ---
+# Target to show git status
+git-status:
+	@echo "Showing git status..."
+	@git status
 
-status:
-	@echo "Lambda Status:"
+# Target to show AWS Lambda status
+lambda-status:
 	@aws lambda get-function --function-name $(SERVICE_NAME) --region $(AWS_REGION) --query 'Configuration.{Name:FunctionName, Status:State, LastModified:LastModified}' --output table 2>/dev/null || echo "Lambda function not found."
 
+# Target to get the public endpoint URL (Prefer API Gateway if exists, fallback to Function URL)
 endpoint:
-	@echo "Lambda Function URL:"
-	@aws lambda get-function-url-config --function-name $(SERVICE_NAME) --region $(AWS_REGION) --query 'FunctionUrl' --output text 2>/dev/null || echo "No Function URL configured."
+	@echo "Querying public endpoints..."
+	@API_URL=$$(aws apigatewayv2 get-apis --query 'Items[?Name==`biometric-api`].ApiEndpoint' --output text 2>/dev/null); \
+	if [ -n "$$API_URL" ] && [ "$$API_URL" != "None" ]; then \
+		echo "HTTP API Gateway: $$API_URL"; \
+	fi; \
+	FURL=$$(aws lambda get-function-url-config --function-name $(SERVICE_NAME) --region $(AWS_REGION) --query 'FunctionUrl' --output text 2>/dev/null); \
+	if [ -n "$$FURL" ] && [ "$$FURL" != "None" ]; then \
+		echo "Lambda Function URL: $$FURL"; \
+	fi
 
-deploy: save-creds lambda
+# Target to pull latest changes from git
+pull:
+	@echo "Pulling latest changes from git..."
+	@git pull
 
-lambda: iam-setup push-ecr create-lambda-function
+# Target to push changes to git
+push:
+	@echo "Pushing changes to git..."
+	@git push
 
-save-creds:
-	./save-aws-creds.sh
+# Code Quality targets
+lint:
+	@echo "Running ruff check..."
+	@ruff check . 2>/dev/null || echo "ruff not installed."
+	@echo "Running lint on frontend..."
+	@cd frontend && npm run lint 2>/dev/null || echo "Frontend lint failed."
 
+format:
+	@echo "Running ruff format..."
+	@ruff format . 2>/dev/null || echo "ruff not installed."
+
+# Build the Docker image
 docker-build:
 	@echo "Building the Docker image..."
 	@docker buildx build --provenance=false -t $(IMAGE_NAME) .
 
+# ECR related targets
 ecr-create:
 	@echo "Checking if ECR repository exists..."
 	@aws ecr describe-repositories --repository-names $(SERVICE_NAME) --region $(AWS_REGION) > /dev/null 2>&1 || \
@@ -81,6 +100,7 @@ push-ecr: ecr-create ecr-login docker-build
 	@docker tag $(IMAGE_NAME) $(FULL_IMAGE_NAME)
 	@docker push $(FULL_IMAGE_NAME)
 
+# IAM Role setup for Lambda
 iam-setup:
 	@echo "Ensuring IAM role $(LAMBDA_ROLE_NAME) exists..."
 	@aws iam get-role --role-name $(LAMBDA_ROLE_NAME) > /dev/null 2>&1 || \
@@ -89,6 +109,14 @@ iam-setup:
 			--assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}' && \
 		aws iam attach-role-policy --role-name $(LAMBDA_ROLE_NAME) \
 			--policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole)
+
+# Target to save AWS credentials
+save-creds:
+	@./save-aws-creds.sh
+
+# Deploy to Amazon Lambda
+deploy: save-creds lambda
+lambda: iam-setup push-ecr create-lambda-function
 
 create-lambda-function:
 	@echo "Deploying to Lambda..."
@@ -103,7 +131,7 @@ create-lambda-function:
 			--function-name $(SERVICE_NAME) \
 			--timeout 300 \
 			--environment "Variables={GOOGLE_API_KEY=$(GOOGLE_API_KEY)}"; \
-		echo "Updating Function URL to BUFFERED mode (Stateless HTTP)..."; \
+		echo "Updating Function URL to RESPONSE_STREAM mode (Stateless HTTP)..."; \
 		aws lambda update-function-url-config --function-name $(SERVICE_NAME) \
 			--region $(AWS_REGION) \
 			--auth-type NONE \
@@ -127,7 +155,7 @@ create-lambda-function:
 			--environment "Variables={GOOGLE_API_KEY=$(GOOGLE_API_KEY)}"; \
 		echo "Waiting for function to be active..."; \
 		aws lambda wait function-active-v2 --function-name $(SERVICE_NAME) --region $(AWS_REGION); \
-		echo "Creating Function URL (BUFFERED mode for Stateless HTTP)..."; \
+		echo "Creating Function URL (RESPONSE_STREAM mode for Stateless HTTP)..."; \
 		aws lambda create-function-url-config --function-name $(SERVICE_NAME) \
 			--region $(AWS_REGION) \
 			--auth-type NONE \
@@ -152,17 +180,31 @@ aws-destroy:
 	@aws iam delete-role --role-name $(LAMBDA_ROLE_NAME) 2>/dev/null || true
 	@echo "AWS resources destroyed."
 
-# --- Local Execution ---
+.PHONY: clean
+clean:
+	@echo "Cleaning up..."
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".adk" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+	@rm -rf frontend/dist 2>/dev/null || true
+	@rm -rf .venv 2>/dev/null || true
 
-run:
-	. ./biosync.sh
+# Custom targets for this project
+frontend:
+	@cd frontend && npm install && npm run build
 
 mock:
-	. ./mock.sh
+	@. ./mock.sh
 
 adk:
-	. ./runadk.sh
+	@. ./runadk.sh
 
 testadk:
-	. ./testadk.sh
+	@. ./testadk.sh
 
+# Cloud Run (kept for reference)
+cloudrun:
+	@echo "Submitting build to Google Cloud Build..."
+	@gcloud builds submit . --config cloudbuild.yaml

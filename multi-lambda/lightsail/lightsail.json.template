@@ -1,38 +1,38 @@
 {
     "containers": {
         "researcher": {
-            "image": ":course-creator-service.researcher.193",
+            "image": ":course-creator-service.researcher.200",
             "command": ["sh", "-c", "sleep 5; python3 -m shared.adk_app /app/agents/researcher --host 0.0.0.0 --port 8001 --a2a"],
             "ports": { "8001": "HTTP" },
             "environment": {
-                "GEMINI_API_KEY": "AIzaSyDbbZdfQCTIZ84MiEiEanz8nAfhC-hBwC0",
+                "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY",
                 "GENAI_MODEL": "gemini-2.5-flash"
             }
         },
         "judge": {
-            "image": ":course-creator-service.judge.194",
+            "image": ":course-creator-service.judge.201",
             "command": ["sh", "-c", "sleep 5; python3 -m shared.adk_app /app/agents/judge --host 0.0.0.0 --port 8002 --a2a"],
             "ports": { "8002": "HTTP" },
             "environment": {
-                "GEMINI_API_KEY": "AIzaSyDbbZdfQCTIZ84MiEiEanz8nAfhC-hBwC0",
+                "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY",
                 "GENAI_MODEL": "gemini-2.5-flash"
             }
         },
         "content-builder": {
-            "image": ":course-creator-service.content-builder.195",
+            "image": ":course-creator-service.content-builder.202",
             "command": ["sh", "-c", "sleep 5; python3 -m shared.adk_app /app/agents/content_builder --host 0.0.0.0 --port 8003 --a2a"],
             "ports": { "8003": "HTTP" },
             "environment": {
-                "GEMINI_API_KEY": "AIzaSyDbbZdfQCTIZ84MiEiEanz8nAfhC-hBwC0",
+                "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY",
                 "GENAI_MODEL": "gemini-2.5-flash"
             }
         },
         "orchestrator": {
-            "image": ":course-creator-service.orchestrator.196",
+            "image": ":course-creator-service.orchestrator.203",
             "command": ["sh", "-c", "sleep 5; python3 -m shared.adk_app /app/agents/orchestrator --host 0.0.0.0 --port 8004 --a2a"],
             "ports": { "8004": "HTTP" },
             "environment": {
-                "GEMINI_API_KEY": "AIzaSyDbbZdfQCTIZ84MiEiEanz8nAfhC-hBwC0",
+                "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY",
                 "GENAI_MODEL": "gemini-2.5-flash",
                 "RESEARCHER_AGENT_CARD_URL": "http://localhost:8001/a2a/researcher/.well-known/agent-card.json",
                 "JUDGE_AGENT_CARD_URL": "http://localhost:8002/a2a/judge/.well-known/agent-card.json",
@@ -40,7 +40,7 @@
             }
         },
         "app": {
-            "image": ":course-creator-service.app.197",
+            "image": ":course-creator-service.app.204",
             "ports": { "8000": "HTTP" },
             "environment": {
                 "AGENT_SERVER_URL": "http://localhost:8004",

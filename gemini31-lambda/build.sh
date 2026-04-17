@@ -1,4 +1,4 @@
-cd $HOME/gemini-cli-aws/gemini31-lightsail
+cd $HOME/gemini-cli-aws/gemini31-lambda
 
 cat <<EOF > Dockerfile
 FROM node:20-slim as builder
@@ -55,5 +55,5 @@ export PROJECT_ID=$(cat ~/project_id.txt)
 export REGION=us-central1
 export SERVICE_NAME=biometric-scout
 export IMAGE_PATH=gcr.io/${PROJECT_ID}/${SERVICE_NAME}
-cd $HOME/gemini-cli-aws/gemini31-lightsail
+cd $HOME/gemini-cli-aws/gemini31-lambda
 gcloud builds submit . --tag ${IMAGE_PATH}

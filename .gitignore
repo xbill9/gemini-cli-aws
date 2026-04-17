@@ -57,3 +57,4 @@ gemini31-ecsexpress/backend/app/biometric_agent/__pycache__/
 gemini31-lightsail/backend/app/biometric_agent/.adk/
 
 multi-ecsexpress/primary.json
+multi-lambda/lightsail/lightsail.json

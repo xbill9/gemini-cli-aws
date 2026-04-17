@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from google.adk.agents.live_request_queue import LiveRequestQueue
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
+from google.adk.sessions import DatabaseSessionService
 from google.genai import types
 
 # Patch ADK for Gemini 3.1 Live API compatibility
@@ -87,7 +87,9 @@ app.add_middleware(
 
 
 # Define your session service
-session_service = InMemorySessionService()
+# Use SQLite for persistent session storage in Lambda/Cloud Run
+DB_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./sessions.db")
+session_service = DatabaseSessionService(db_url=DB_URL)
 
 # Define your runner
 runner = Runner(app_name=APP_NAME, agent=root_agent, session_service=session_service)
@@ -432,8 +434,6 @@ async def websocket_endpoint(
                         "message": "ROCK ON! HEAVY METAL OVERRIDE DETECTED.",
                     }
                     await websocket.send_text(json.dumps(hm_msg))
-
-            # ... rest of the transcript and audio handling ...
 
             # Process Function Responses
             for fr in function_responses:

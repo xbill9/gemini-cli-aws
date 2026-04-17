@@ -1,5 +1,5 @@
 
-cd $HOME/gemini-cli-aws/gemini31-lightsail
+cd $HOME/gemini-cli-aws/gemini31-lambda
 export GOOGLE_API_KEY=$GOOGLE_API_KEY
 export GEMINI_API_KEY=$GOOGLE_API_KEY
 export GEMINI_KEY=$GOOGLE_API_KEY
