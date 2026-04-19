@@ -7,8 +7,9 @@ export
 
 # AWS Configuration
 AWS_REGION ?= us-east-1
-SERVICE_NAME ?= adk-comic-pipeline-lambda
+SERVICE_NAME ?= adkui-lambda
 IMAGE_NAME ?= adk-comic-pipeline-image
+API_NAME ?= $(SERVICE_NAME)-api
 
 # Derived AWS variables
 AWS_ACCOUNT_ID := $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "UNKNOWN")
@@ -20,7 +21,11 @@ FULL_IMAGE_NAME := $(ECR_REPO_URL):$(IMAGE_TAG)
 LAMBDA_ROLE_NAME := McpLambdaExecutionRole
 LAMBDA_ROLE_ARN := arn:aws:iam::$(AWS_ACCOUNT_ID):role/$(LAMBDA_ROLE_NAME)
 
-.PHONY: all install run build test lint format type-check status git-status lambda-status endpoint pull push clean deploy docker-build ecr-create ecr-login push-ecr lambda-deploy iam-setup aws-destroy
+.PHONY: all install run build test test-remote check lint format type-check status git-status lambda-status endpoint api-endpoint pull push clean deploy docker-build ecr-create ecr-login push-ecr lambda-deploy iam-setup aws-destroy api-gateway-setup logs
+
+print-vars:
+	@echo "SERVICE_NAME: $(SERVICE_NAME)"
+	@echo "API_NAME: $(API_NAME)"
 
 all: install run
 
@@ -33,7 +38,7 @@ run:
 	adk web . --host 0.0.0.0 --port 8080
 
 # Target to show both git and Lambda status
-status: lambda-status api-endpoint
+status: lambda-status endpoint api-endpoint
 
 # Target to show git status
 git-status:
@@ -44,13 +49,18 @@ git-status:
 lambda-status:
 	@aws lambda get-function --function-name $(SERVICE_NAME) --region $(AWS_REGION) --query 'Configuration.{Name:FunctionName, Status:State, LastModified:LastModified}' --output table 2>/dev/null || echo "Lambda function not found."
 
-# Target to get the public API Gateway endpoint URL
-api-endpoint:
-	@aws apigatewayv2 get-apis --region $(AWS_REGION) --query 'Items[?Name==`adk-comic-pipeline-api`].ApiEndpoint' --output text 2>/dev/null || true
-
 # Target to get the public endpoint URL (Lambda Function URL)
 endpoint:
-	@aws lambda get-function-url-config --function-name $(SERVICE_NAME) --region $(AWS_REGION) --query 'FunctionUrl' --output text
+	@aws lambda get-function-url-config --function-name $(SERVICE_NAME) --region $(AWS_REGION) --query 'FunctionUrl' --output text 2>/dev/null || echo "Function URL not found."
+
+# Target to get the API Gateway URL (HTTP API v2)
+api-endpoint:
+	@API_ID=$$(aws apigatewayv2 get-apis --region $(AWS_REGION) --output json | jq -r '[.Items[] | select(.Name == "$(API_NAME)")] | sort_by(.CreatedDate) | .[-1].ApiId' | tr -d '[:space:]'); \
+	if [ -n "$$API_ID" ] && [ "$$API_ID" != "None" ]; then \
+		echo "https://$$API_ID.execute-api.$(AWS_REGION).amazonaws.com/"; \
+	else \
+		echo "API Gateway not found."; \
+	fi
 
 # Target to save AWS credentials
 save-creds:
@@ -67,13 +77,44 @@ push:
 	@git push
 
 # Code Quality targets
+check: lint test
+	@echo "All checks passed!"
+
+test:
+	@echo "Running tests..."
+	@pytest test_smoke.py || echo "Tests failed."
+
+test-remote: e2e-test-lambda
+e2e-test-lambda:
+	@echo "Running remote tests..."
+	@API_ID=$$(aws apigatewayv2 get-apis --region $(AWS_REGION) --output json | jq -r '[.Items[] | select(.Name == "$(API_NAME)")] | sort_by(.CreatedDate) | .[-1].ApiId' | tr -d '[:space:]'); \
+	if [ -n "$$API_ID" ] && [ "$$API_ID" != "None" ]; then \
+		URL="https://$$API_ID.execute-api.$(AWS_REGION).amazonaws.com/"; \
+		echo "Testing endpoint: $$URL"; \
+		HTTP_STATUS=$$(curl -s -o /dev/null -w "%{http_code}" $$URL); \
+		if echo "$$HTTP_STATUS" | grep -q "^2"; then \
+			echo "Remote test passed (HTTP Status: $$HTTP_STATUS)."; \
+		else \
+			echo "Remote test failed (HTTP Status: $$HTTP_STATUS)."; \
+			exit 1; \
+		fi; \
+	else \
+		echo "API Gateway not found."; \
+		exit 1; \
+	fi
+
 lint:
-	@echo "Running flake8..."
-	@flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics 2>/dev/null || echo "flake8 not installed."
+	@echo "Running ruff..."
+	@ruff check . || echo "ruff check failed."
+
+lint-fix:
+	@echo "Fixing lint issues with ruff..."
+	@ruff check . --fix || echo "ruff fix failed."
 
 format:
-	@echo "Running black formatting..."
-	@black . 2>/dev/null || echo "Black not installed, skipping."
+	@echo "Running ruff format and black..."
+	@ruff format . || echo "ruff format failed."
+	@black . || echo "black failed."
 
 # Build the Docker image
 docker-build:
@@ -81,13 +122,13 @@ docker-build:
 	@docker buildx build --provenance=false -t $(IMAGE_NAME) .
 
 # ECR related targets
-ecr-create:
+ecr-create: save-creds
 	@echo "Checking if ECR repository exists..."
 	@aws ecr describe-repositories --repository-names $(SERVICE_NAME) --region $(AWS_REGION) > /dev/null 2>&1 || \
 		(echo "Creating ECR repository $(SERVICE_NAME)..." && \
 		aws ecr create-repository --repository-name $(SERVICE_NAME) --region $(AWS_REGION))
 
-ecr-login:
+ecr-login: save-creds
 	@echo "Logging in to Amazon ECR..."
 	@aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 
@@ -97,7 +138,7 @@ push-ecr: ecr-create ecr-login docker-build
 	@docker push $(FULL_IMAGE_NAME)
 
 # IAM Role setup for Lambda
-iam-setup:
+iam-setup: save-creds
 	@echo "Ensuring IAM role $(LAMBDA_ROLE_NAME) exists..."
 	@aws iam get-role --role-name $(LAMBDA_ROLE_NAME) > /dev/null 2>&1 || \
 		(echo "Creating role $(LAMBDA_ROLE_NAME)..." && \
@@ -110,7 +151,25 @@ iam-setup:
 deploy: save-creds lambda
 lambda: iam-setup push-ecr create-lambda-function
 
-create-lambda-function:
+api-gateway-setup:
+	@echo "Setting up HTTP API Gateway (v2)..."
+	@API_ID=$$(aws apigatewayv2 get-apis --region $(AWS_REGION) --query "items[?name=='$(API_NAME)'].ApiId" --output text); \
+	if [ -z "$$API_ID" ] || [ "$$API_ID" = "None" ]; then \
+		echo "Creating new HTTP API $(API_NAME)..."; \
+		API_ID=$$(aws apigatewayv2 create-api --name $(API_NAME) --protocol-type HTTP --region $(AWS_REGION) --query 'ApiId' --output text); \
+	fi; \
+	INTEGRATION_ID=$$(aws apigatewayv2 get-integrations --api-id $$API_ID --region $(AWS_REGION) --query "items[0].IntegrationId" --output text); \
+	if [ -z "$$INTEGRATION_ID" ] || [ "$$INTEGRATION_ID" = "None" ]; then \
+		echo "Creating Lambda integration..."; \
+		INTEGRATION_ID=$$(aws apigatewayv2 create-integration --api-id $$API_ID --integration-type AWS_PROXY --integration-uri arn:aws:lambda:$(AWS_REGION):$(AWS_ACCOUNT_ID):function:$(SERVICE_NAME) --payload-format-version '2.0' --region $(AWS_REGION) --query 'IntegrationId' --output text); \
+	fi; \
+	aws apigatewayv2 create-route --api-id $$API_ID --route-key 'ANY /{proxy+}' --target integrations/$$INTEGRATION_ID --region $(AWS_REGION) 2>/dev/null || true; \
+	aws apigatewayv2 create-route --api-id $$API_ID --route-key 'ANY /' --target integrations/$$INTEGRATION_ID --region $(AWS_REGION) 2>/dev/null || true; \
+	aws apigatewayv2 create-stage --api-id $$API_ID --stage-name '$$default' --auto-deploy --region $(AWS_REGION) 2>/dev/null || true; \
+	aws lambda add-permission --function-name $(SERVICE_NAME) --statement-id ApiGatewayV2InvokePermission --action lambda:InvokeFunction --principal apigateway.amazonaws.com --source-arn "arn:aws:execute-api:$(AWS_REGION):$(AWS_ACCOUNT_ID):$$API_ID/*/*" --region $(AWS_REGION) 2>/dev/null || true; \
+	echo "HTTP API Gateway setup complete. URL: https://$$API_ID.execute-api.$(AWS_REGION).amazonaws.com/"
+
+create-lambda-function: save-creds
 	@echo "Deploying to Lambda..."
 	if aws lambda get-function --function-name $(SERVICE_NAME) --region $(AWS_REGION) > /dev/null 2>&1; then \
 		echo "Updating existing Lambda function..."; \
@@ -128,12 +187,18 @@ create-lambda-function:
 			--auth-type NONE \
 			--invoke-mode BUFFERED; \
 		echo "Ensuring public URL access permission..."; \
+		aws lambda remove-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess 2>/dev/null || true; \
 		aws lambda add-permission --function-name $(SERVICE_NAME) \
 			--region $(AWS_REGION) \
 			--statement-id FunctionURLPublicAccess \
 			--action lambda:InvokeFunctionUrl \
 			--principal "*" \
-			--function-url-auth-type NONE 2>/dev/null || true; \
+			--function-url-auth-type NONE; \
+		aws lambda add-permission --function-name $(SERVICE_NAME) \
+			--region $(AWS_REGION) \
+			--statement-id FunctionURLPublicAccess2 \
+			--action lambda:InvokeFunction \
+			--principal "*"; \
 	else \
 		echo "Creating a new Lambda function..."; \
 		aws lambda create-function --region $(AWS_REGION) \
@@ -142,7 +207,7 @@ create-lambda-function:
 			--package-type Image \
 			--code ImageUri=$(FULL_IMAGE_NAME) \
 			--timeout 300 \
-			--memory-size 1024; \
+			--memory-size 2048; \
 		echo "Waiting for function to be active..."; \
 		aws lambda wait function-active-v2 --function-name $(SERVICE_NAME) --region $(AWS_REGION); \
 		echo "Creating Function URL (BUFFERED mode for Stateless HTTP)..."; \
@@ -151,16 +216,27 @@ create-lambda-function:
 			--auth-type NONE \
 			--invoke-mode BUFFERED; \
 		echo "Adding permission for public URL access..."; \
+		aws lambda remove-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess 2>/dev/null || true; \
 		aws lambda add-permission --function-name $(SERVICE_NAME) \
 			--region $(AWS_REGION) \
 			--statement-id FunctionURLPublicAccess \
 			--action lambda:InvokeFunctionUrl \
 			--principal "*" \
 			--function-url-auth-type NONE; \
+		aws lambda add-permission --function-name $(SERVICE_NAME) \
+			--region $(AWS_REGION) \
+			--statement-id FunctionURLPublicAccess2 \
+			--action lambda:InvokeFunction \
+			--principal "*"; \
 	fi
 
 aws-destroy:
 	@echo "Destroying AWS resources for $(SERVICE_NAME)..."
+	@API_ID=$$(aws apigatewayv2 get-apis --region $(AWS_REGION) --query "items[?name=='$(API_NAME)'].ApiId" --output text); \
+	if [ -n "$$API_ID" ] && [ "$$API_ID" != "None" ]; then \
+		echo "Deleting HTTP API $$API_ID..."; \
+		aws apigatewayv2 delete-api --api-id $$API_ID --region $(AWS_REGION) 2>/dev/null || true; \
+	fi
 	@echo "Deleting Lambda function..."
 	@aws lambda delete-function --function-name $(SERVICE_NAME) --region $(AWS_REGION) 2>/dev/null || true
 	@echo "Deleting ECR repository..."
@@ -183,7 +259,7 @@ clean:
 	@rm -rf .venv
 	@echo "Clean completed."
 
-# Cloud Run (kept for reference)
-cloudrun:
-	@echo "Submitting build to Google Cloud Build..."
-	@gcloud builds submit . --config cloudbuild.yaml
+logs:
+	@echo "Tailing CloudWatch logs for $(SERVICE_NAME)..."
+	@aws logs tail /aws/lambda/$(SERVICE_NAME) --follow --region $(AWS_REGION)
+

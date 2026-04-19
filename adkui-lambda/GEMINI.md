@@ -1,10 +1,10 @@
 # Gemini Code Assistant Context
 
-This document provides context for the Gemini Code Assistant to understand the ADK (Agent Development Kit) project for building an agentic comic book pipeline.
+This document provides context for the Gemini Code Assistant to understand the ADK (Agent Development Kit) project `adkui-lambda`.
 
 ## Project Overview
 
-This project implements a multi-agent system using the **Google ADK** to automate the creation of comic books. It follows a sequential pipeline where specialized agents handle scripting, panelization, image synthesis, and assembly. It also supports multi-cloud deployment to Google Cloud and AWS.
+This project implements a multi-agent system using the **Google ADK** to automate the creation of comic books. It follows a sequential pipeline where specialized agents handle scripting, panelization, image synthesis, and assembly. It is deployed to AWS Lambda and utilizes Google Vertex AI for generative tasks.
 
 It is based on the solution to the codelab: [Create a low-code agent with ADK visual builder](https://codelabs.developers.google.com/codelabs/create-low-code-agent-with-ADK-visual-builder)
 
@@ -13,7 +13,7 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 *   **Framework:** Google ADK (Agent Development Kit) [Docs](https://google.github.io/adk-docs/)
 *   **Language:** Python 3
 *   **Generative AI:** Vertex AI (GenAI SDK)
-*   **Cloud Platforms:** Google Cloud (Run, Vertex AI), AWS (Lambda Container Image)
+*   **Cloud Platforms:** AWS (Lambda Container Image), Vertex AI (GCP)
 *   **Models:**
     *   **LLM Tasks:** `gemini-2.5-flash` (used for narrative and layout planning).
     *   **Image Gen:** `imagen-3.0-fast-generate-001`.
@@ -40,10 +40,9 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
     *   `agent_builder`: Launches the ADK Builder UI.
     *   `myadk`: Wrapper for `adk` CLI.
 *   **Deployment**:
-    *   `deploy-lightsail.sh`: Legacy script for Amazon Lightsail deployment (deprecated).
-    *   `save-aws-creds.sh`: Utility to export AWS credentials to `.aws_creds`.
-    *   `deploycloudrun.py`: Script for Google Cloud Run deployment.
-    *   `Dockerfile`: Multi-stage build for deploying the ADK application (Lambda compatible).
+    *   **save-aws-creds.sh**: Utility to export AWS credentials to `.aws_creds`.
+    *   **Dockerfile**: Multi-stage build for deploying the ADK application (Lambda compatible).
+
 *   **Utility**:
     *   `init.sh`: Project initialization script.
     *   `comic.sh`: Local server for viewing comics.
@@ -69,3 +68,7 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 3.  **Image Synthesis**: Panel descriptions -> Vertex AI generated images.
 4.  **Assembly**: Images + Script -> responsive HTML layout (`output/comic.html`).
 5.  **Inspection (Agent4)**: Summarize and export to ADK Artifacts.
+
+## AWS Lambda Documentation
+*   [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html)
+*   [AWS Lambda Python Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html)

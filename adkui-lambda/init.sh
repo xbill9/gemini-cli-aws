@@ -23,25 +23,26 @@ fi
 
 gcloud config set project "$PROJECT_ID"
 
+# enable services
+
 gcloud services enable aiplatform.googleapis.com
 gcloud services enable cloudresourcemanager.googleapis.com
 gcloud services enable artifactregistry.googleapis.com
 gcloud services enable cloudbuild.googleapis.com
 gcloud services enable run.googleapis.com
-
 gcloud services enable cloudaicompanion.googleapis.com
 
 
-#curl -s https://raw.githubusercontent.com/haren-bh/gcpbillingactivate/main/activate.py | python3
-
 cat <<EOF > .env
-GOOGLE_GENAI_USE_VERTEXAI=0
+GOOGLE_GENAI_USE_VERTEXAI=false
 GOOGLE_CLOUD_PROJECT=$PROJECT_ID
 GOOGLE_CLOUD_LOCATION=us-central1
 IMAGEN_MODEL="imagen-4.0-fast-generate-001"
 GENAI_MODEL="gemini-2.5-flash"
 GOOGLE_API_KEY=$GOOGLE_API_KEY
 GEMINI_API_KEY=$GOOGLE_API_KEY
+GEMINI_KEY=$GOOGLE_API_KEY
+MODEL_ID="gemini-3.1-flash-live-preview"
 EOF
 
 source .env

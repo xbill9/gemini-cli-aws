@@ -3,7 +3,7 @@ FROM python:3.13-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
-# Disable local storage for read-only container environments like Cloud Run/Lambda
+# Disable local storage for read-only container environments like Lambda
 ENV ADK_DISABLE_LOCAL_STORAGE=1
 
 # 1. Install the AWS Lambda Web Adapter (matching reference version)
@@ -33,4 +33,4 @@ ENV AWS_LAMBDA_WEB_ADAPTER_INVOKE_MODE=buffered
 
 # Start the ADK Web UI, serving all agents in the current directory
 # The Web Adapter will forward requests to this process on port 8080
-CMD ["adk", "web", ".", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["adk", "web", ".", "--host", "0.0.0.0", "--port", "8080", "--no-reload"]

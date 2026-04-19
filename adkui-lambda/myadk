@@ -1,1 +1,1 @@
-$HOME/.local/bin/adk $*
+/home/xbill/.pyenv/shims/adk $*

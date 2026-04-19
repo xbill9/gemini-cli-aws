@@ -1,6 +1,6 @@
-# ADK Comic Pipeline
+# adkui-lambda
 
-This repository contains an agentic pipeline for generating comic books, built using the **Google Agent Development Kit (ADK)** and **Vertex AI**. It supports multi-cloud deployment to both Google Cloud and Amazon Web Services (AWS).
+This repository contains an agentic pipeline for generating comic books, built using the **Google Agent Development Kit (ADK)** and **Vertex AI**. It is optimized for deployment to **Amazon Web Services (AWS) Lambda**.
 
 It is based on the solution to the codelab: [Create a low-code agent with ADK visual builder](https://codelabs.developers.google.com/codelabs/create-low-level-agent-with-ADK-visual-builder)
 
@@ -11,7 +11,7 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 - **AI Image Synthesis**: Generates 16:9 images for each panel using Vertex AI.
 - **HTML Assembly**: Compiles the final artwork and script into a responsive HTML comic book.
 - **Comic Inspection**: Dedicated agent for summarizing and exporting generated comics as UI artifacts.
-- **Multi-Cloud Deployment**: Scripts for deploying agents to **Google Cloud Run** and **AWS Lambda**.
+- **AWS Lambda Deployment**: Optimized Docker-based deployment for serverless execution on AWS.
 - **Low-Code Interface**: Use the ADK Builder for visual agent development.
 
 ## Project Structure
@@ -30,9 +30,7 @@ It is based on the solution to the codelab: [Create a low-code agent with ADK vi
 - `agent_builder`: Launches the ADK Builder UI (accessible via browser) for visual agent design.
 - `myadk`: A convenience wrapper for the `adk` CLI tool.
 - `comic.sh`: Starts a local web server (port 8080) to view the generated comic.
-- `deploy-lightsail.sh`: Deploys the agent container to Amazon Lightsail (deprecated).
 - `save-aws-creds.sh`: Exports and saves AWS credentials for deployment scripts.
-- `deploycloudrun.py`: Automates deployment to Google Cloud Run, including IAM and Service Account setup.
 - `fix_comic.py`: Manual utility to regenerate the `comic.html` with a default story (Momotaro).
 - `init.sh`: Comprehensive setup script to configure the GCP project, enable APIs, and install dependencies.
 - `set_env.sh` / `set_adc.sh`: Helpers to set environment variables and refresh Application Default Credentials.
@@ -74,15 +72,7 @@ This agent provides tools to inspect the `output/` directory, summarize the gene
 
 ## Deployment
 
-### AWS Lambda (Recommended)
 To deploy the project as a container to AWS Lambda:
 ```bash
 make deploy
 ```
-
-### Google Cloud Run
-To deploy an agent (default Agent1) to Google Cloud Run:
-```bash
-python3 deploycloudrun.py
-```
-*Note: Edit `deploycloudrun.py` to change the default target agent.*
