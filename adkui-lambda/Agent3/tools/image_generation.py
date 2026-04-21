@@ -125,7 +125,7 @@ async def generate_image(
             }
 
         # Create the images directory if it doesn't exist
-        output_dir = "images"
+        output_dir = "/tmp/images"
         os.makedirs(output_dir, exist_ok=True)
 
         # Determine the artifact name
@@ -149,7 +149,7 @@ async def generate_image(
             "status": "success",
             "message": f"Image generated and saved to {file_path}.",
             "artifact_name": artifact_name,
-            "url": f"images/{artifact_name}",
+            "url": f"/tmp/images/{artifact_name}",
         }
 
     except Exception as e:

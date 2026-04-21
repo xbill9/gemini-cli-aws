@@ -27,6 +27,12 @@ RUN uv pip install --no-cache-dir --system -r requirements.txt
 # Copy the entire project into the container
 COPY . .
 
+# Workaround for ADK Web UI read-only filesystem issue
+RUN mkdir -p /tmp/config && \
+    touch /tmp/config/runtime-config.json && \
+    rm -f /usr/local/lib/python3.13/site-packages/google/adk/cli/browser/assets/config/runtime-config.json && \
+    ln -s /tmp/config/runtime-config.json /usr/local/lib/python3.13/site-packages/google/adk/cli/browser/assets/config/runtime-config.json
+
 # Set the PORT environment variable for the web adapter
 ENV PORT=8080
 ENV AWS_LAMBDA_WEB_ADAPTER_INVOKE_MODE=buffered

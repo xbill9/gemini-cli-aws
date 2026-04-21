@@ -6,10 +6,15 @@ export AWS_PAGER :=
 export
 
 # AWS Configuration
-AWS_REGION ?= us-east-1
+AWS_REGION ?= us-west-1
 SERVICE_NAME ?= adkui-lambda
 IMAGE_NAME ?= adk-comic-pipeline-image
 API_NAME ?= $(SERVICE_NAME)-api
+
+# API Key for Vertex AI (or other services)
+API_KEY := $(shell grep -oP '^GEMINI_API_KEY=\K.*' .env | tr -d '\n')
+S3_BUCKET_NAME ?= my-adk-comic-artifacts
+ENVIRONMENT_VARIABLES := Variables="{GEMINI_API_KEY=$(API_KEY),S3_BUCKET_NAME=$(S3_BUCKET_NAME)}"
 
 # Derived AWS variables
 AWS_ACCOUNT_ID := $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "UNKNOWN")
@@ -155,81 +160,45 @@ api-gateway-setup:
 	@echo "Setting up HTTP API Gateway (v2)..."
 	@API_ID=$$(aws apigatewayv2 get-apis --region $(AWS_REGION) --query "items[?name=='$(API_NAME)'].ApiId" --output text); \
 	if [ -z "$$API_ID" ] || [ "$$API_ID" = "None" ]; then \
-		echo "Creating new HTTP API $(API_NAME)..."; \
-		API_ID=$$(aws apigatewayv2 create-api --name $(API_NAME) --protocol-type HTTP --region $(AWS_REGION) --query 'ApiId' --output text); \
+		echo "Creating new HTTP API $(API_NAME)..."; API_ID=$$(aws apigatewayv2 create-api --name $(API_NAME) --protocol-type HTTP --region $(AWS_REGION) --query 'ApiId' --output text); \
 	fi; \
 	INTEGRATION_ID=$$(aws apigatewayv2 get-integrations --api-id $$API_ID --region $(AWS_REGION) --query "items[0].IntegrationId" --output text); \
 	if [ -z "$$INTEGRATION_ID" ] || [ "$$INTEGRATION_ID" = "None" ]; then \
-		echo "Creating Lambda integration..."; \
-		INTEGRATION_ID=$$(aws apigatewayv2 create-integration --api-id $$API_ID --integration-type AWS_PROXY --integration-uri arn:aws:lambda:$(AWS_REGION):$(AWS_ACCOUNT_ID):function:$(SERVICE_NAME) --payload-format-version '2.0' --region $(AWS_REGION) --query 'IntegrationId' --output text); \
+		echo "Creating Lambda integration..."; INTEGRATION_ID=$$(aws apigatewayv2 create-integration --api-id $$API_ID --integration-type AWS_PROXY --integration-uri arn:aws:lambda:$(AWS_REGION):$(AWS_ACCOUNT_ID):function:$(SERVICE_NAME) --payload-format-version '2.0' --region $(AWS_REGION) --query 'IntegrationId' --output text); \
 	fi; \
 	aws apigatewayv2 create-route --api-id $$API_ID --route-key 'ANY /{proxy+}' --target integrations/$$INTEGRATION_ID --region $(AWS_REGION) 2>/dev/null || true; \
 	aws apigatewayv2 create-route --api-id $$API_ID --route-key 'ANY /' --target integrations/$$INTEGRATION_ID --region $(AWS_REGION) 2>/dev/null || true; \
 	aws apigatewayv2 create-stage --api-id $$API_ID --stage-name '$$default' --auto-deploy --region $(AWS_REGION) 2>/dev/null || true; \
 	aws lambda add-permission --function-name $(SERVICE_NAME) --statement-id ApiGatewayV2InvokePermission --action lambda:InvokeFunction --principal apigateway.amazonaws.com --source-arn "arn:aws:execute-api:$(AWS_REGION):$(AWS_ACCOUNT_ID):$$API_ID/*/*" --region $(AWS_REGION) 2>/dev/null || true; \
 	echo "HTTP API Gateway setup complete. URL: https://$$API_ID.execute-api.$(AWS_REGION).amazonaws.com/"
-
 create-lambda-function: save-creds
 	@echo "Deploying to Lambda..."
 	if aws lambda get-function --function-name $(SERVICE_NAME) --region $(AWS_REGION) > /dev/null 2>&1; then \
 		echo "Updating existing Lambda function..."; \
-		aws lambda update-function-code --region $(AWS_REGION) \
-			--function-name $(SERVICE_NAME) \
-			--image-uri $(FULL_IMAGE_NAME); \
+		aws lambda update-function-code --region $(AWS_REGION) --function-name $(SERVICE_NAME) --image-uri $(FULL_IMAGE_NAME); \
 		echo "Waiting for function update to complete..."; \
 		aws lambda wait function-updated-v2 --function-name $(SERVICE_NAME) --region $(AWS_REGION); \
-		aws lambda update-function-configuration --region $(AWS_REGION) \
-			--function-name $(SERVICE_NAME) \
-			--timeout 300; \
+		aws lambda update-function-configuration --region $(AWS_REGION) --function-name $(SERVICE_NAME) --environment $(ENVIRONMENT_VARIABLES) --timeout 300; \
 		echo "Updating Function URL to BUFFERED mode (Stateless HTTP)..."; \
-		aws lambda update-function-url-config --function-name $(SERVICE_NAME) \
-			--region $(AWS_REGION) \
-			--auth-type NONE \
-			--invoke-mode BUFFERED; \
+		aws lambda update-function-url-config --function-name $(SERVICE_NAME) --region $(AWS_REGION) --auth-type NONE --invoke-mode BUFFERED; \
 		echo "Ensuring public URL access permission..."; \
 		aws lambda remove-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess 2>/dev/null || true; \
-		aws lambda add-permission --function-name $(SERVICE_NAME) \
-			--region $(AWS_REGION) \
-			--statement-id FunctionURLPublicAccess \
-			--action lambda:InvokeFunctionUrl \
-			--principal "*" \
-			--function-url-auth-type NONE; \
-		aws lambda add-permission --function-name $(SERVICE_NAME) \
-			--region $(AWS_REGION) \
-			--statement-id FunctionURLPublicAccess2 \
-			--action lambda:InvokeFunction \
-			--principal "*"; \
+		aws lambda add-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess --action lambda:InvokeFunctionUrl --principal "*" --function-url-auth-type NONE; \
+		aws lambda remove-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess2 2>/dev/null || true; \
+		aws lambda add-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess2 --action lambda:InvokeFunction --principal "*"; \
 	else \
 		echo "Creating a new Lambda function..."; \
-		aws lambda create-function --region $(AWS_REGION) \
-			--function-name $(SERVICE_NAME) \
-			--role $(LAMBDA_ROLE_ARN) \
-			--package-type Image \
-			--code ImageUri=$(FULL_IMAGE_NAME) \
-			--timeout 300 \
-			--memory-size 2048; \
+		aws lambda create-function --region $(AWS_REGION) --function-name $(SERVICE_NAME) --role $(LAMBDA_ROLE_ARN) --package-type Image --code ImageUri=$(FULL_IMAGE_NAME) --environment $(ENVIRONMENT_VARIABLES) --timeout 300 --memory-size 2048; \
 		echo "Waiting for function to be active..."; \
 		aws lambda wait function-active-v2 --function-name $(SERVICE_NAME) --region $(AWS_REGION); \
 		echo "Creating Function URL (BUFFERED mode for Stateless HTTP)..."; \
-		aws lambda create-function-url-config --function-name $(SERVICE_NAME) \
-			--region $(AWS_REGION) \
-			--auth-type NONE \
-			--invoke-mode BUFFERED; \
+		aws lambda create-function-url-config --function-name $(SERVICE_NAME) --region $(AWS_REGION) --auth-type NONE --invoke-mode BUFFERED; \
 		echo "Adding permission for public URL access..."; \
 		aws lambda remove-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess 2>/dev/null || true; \
-		aws lambda add-permission --function-name $(SERVICE_NAME) \
-			--region $(AWS_REGION) \
-			--statement-id FunctionURLPublicAccess \
-			--action lambda:InvokeFunctionUrl \
-			--principal "*" \
-			--function-url-auth-type NONE; \
-		aws lambda add-permission --function-name $(SERVICE_NAME) \
-			--region $(AWS_REGION) \
-			--statement-id FunctionURLPublicAccess2 \
-			--action lambda:InvokeFunction \
-			--principal "*"; \
+		aws lambda add-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess --action lambda:InvokeFunctionUrl --principal "*" --function-url-auth-type NONE; \
+		aws lambda remove-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess2 2>/dev/null || true; \
+		aws lambda add-permission --function-name $(SERVICE_NAME) --region $(AWS_REGION) --statement-id FunctionURLPublicAccess2 --action lambda:InvokeFunction --principal "*"; \
 	fi
-
 aws-destroy:
 	@echo "Destroying AWS resources for $(SERVICE_NAME)..."
 	@API_ID=$$(aws apigatewayv2 get-apis --region $(AWS_REGION) --query "items[?name=='$(API_NAME)'].ApiId" --output text); \

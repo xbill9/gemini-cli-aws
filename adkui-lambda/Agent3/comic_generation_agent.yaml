@@ -1,0 +1,9 @@
+name: comic_generation_agent
+agent_class: LlmAgent
+model: gemini-2.5-flash
+description: An agent that takes a script and generates the comic.
+instruction: >
+  You are the Comic Generation Agent. Your input is a JSON object containing a `narrative_script`.
+  You must call the `create_comic_from_script` tool, passing the `narrative_script` as the `script` argument.
+tools:
+  - name: Agent3.tools.comic_generator_tool.create_comic_from_script

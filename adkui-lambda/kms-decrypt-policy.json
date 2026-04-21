@@ -4,7 +4,7 @@
         {
             "Effect": "Allow",
             "Action": "kms:Decrypt",
-            "Resource": "arn:aws:kms:us-east-1:106059658660:key/20fd8a53-05ff-417d-b849-6d9323c253b6"
+            "Resource": "arn:aws:kms:us-west-1:106059658660:key/20fd8a53-05ff-417d-b849-6d9323c253b6"
         }
     ]
 }

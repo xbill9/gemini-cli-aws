@@ -36,3 +36,4 @@ htmlcov/
 .env
 
 output
+.aws_creds

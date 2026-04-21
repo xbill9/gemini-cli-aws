@@ -4,52 +4,89 @@ import base64
 import re
 from google.adk.tools import ToolContext
 from google.genai import types
+import boto3
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
+
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME", "my-adk-comic-artifacts")
+
+def _get_s3_client():
+    try:
+        return boto3.client("s3")
+    except ClientError as e:
+        logger.error(f"Failed to create S3 client: {e}")
+        return None
+
+def _read_s3_object(s3_client, bucket, key):
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        return response['Body'].read()
+    except ClientError as e:
+        logger.error(f"Failed to read S3 object {key} from bucket {bucket}: {e}")
+        return None
+
+def _list_s3_objects(s3_client, bucket, prefix=""):
+    try:
+        objects = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        return [obj['Key'] for obj in objects.get('Contents', [])]
+    except ClientError as e:
+        logger.error(f"Failed to list S3 objects in bucket {bucket} with prefix {prefix}: {e}")
+        return []
+
 
 
 def list_generated_comics() -> str:
     """
-    Lists the files in the 'output' directory to see what's been generated.
+    Lists the files in the configured S3 bucket to see what's been generated.
     Returns:
-        A string listing all files in the output folder.
+        A string listing all relevant files in the S3 bucket.
     """
-    output_dir = "output"
-    if not os.path.exists(output_dir):
-        return "The 'output' directory does not exist yet. Run Agent3 first."
+    s3_client = _get_s3_client()
+    if not s3_client:
+        return "Failed to initialize S3 client. Please check AWS credentials."
 
-    files = os.listdir(output_dir)
-    if not files:
-        return "The 'output' directory is empty."
+    try:
+        # Agent3 uploads comic.html and images directly to the bucket root
+        all_objects = _list_s3_objects(s3_client, S3_BUCKET_NAME)
+        
+        html_files = [f for f in all_objects if f.lower().endswith(".html")]
+        image_files = [f for f in all_objects if f.lower().endswith((".png", ".jpg", ".jpeg"))]
 
-    # Also list images if they exist
-    images_dir = os.path.join(output_dir, "images")
-    image_list = ""
-    if os.path.exists(images_dir):
-        images = [
-            f
-            for f in os.listdir(images_dir)
-            if f.lower().endswith((".png", ".jpg", ".jpeg"))
-        ]
-        if images:
-            image_list = "\n\nImages in 'output/images/':\n- " + "\n- ".join(images)
+        output_list = []
+        if html_files:
+            output_list.append("HTML files in S3 bucket:\n- " + "\n- ".join(html_files))
+        if image_files:
+            output_list.append("Images in S3 bucket:\n- " + "\n- ".join(image_files))
 
-    return "Files in the 'output' directory:\n- " + "\n- ".join(files) + image_list
+        if not output_list:
+            return f"The S3 bucket '{S3_BUCKET_NAME}' is empty or contains no relevant comic files."
+        
+        return "\n\n".join(output_list)
+
+    except Exception as e:
+        logger.error(f"Error listing S3 objects: {e}")
+        return f"An error occurred while listing comics from S3: {e}"
 
 
 def get_comic_summary() -> str:
     """
-    Reads the comic HTML and extracts a plain text summary of the story and panels.
+    Reads the comic HTML from S3 and extracts a plain text summary of the story and panels.
     Returns:
         A string summary of the comic.
     """
-    html_path = os.path.join("output", "comic.html")
-    if not os.path.exists(html_path):
-        return "Error: 'output/comic.html' was not found."
+    s3_client = _get_s3_client()
+    if not s3_client:
+        return "Failed to initialize S3 client. Please check AWS credentials."
+
+    html_key = "comic.html"
+    html_content_bytes = _read_s3_object(s3_client, S3_BUCKET_NAME, html_key)
+    
+    if html_content_bytes is None:
+        return f"Error: '{html_key}' was not found in S3 bucket '{S3_BUCKET_NAME}'."
 
     try:
-        with open(html_path, "r") as f:
-            content = f.read()
+        content = html_content_bytes.decode('utf-8')
 
         # Simple extraction of text - stripping tags
         # This is a bit naive but should give a sense of the story
@@ -58,81 +95,87 @@ def get_comic_summary() -> str:
         lines = [line.strip() for line in text_content.split("\n") if line.strip()]
         summary = "\n".join(lines[:50])  # Limit to first 50 lines
 
-        return f"Summary of 'comic.html':\n\n{summary}"
+        return f"Summary of '{html_key}' from S3:\n\n{summary}"
     except Exception as e:
-        return f"Error reading file: {e}"
+        return f"Error reading or processing comic.html from S3: {e}"
 
 
 async def export_comic_to_artifacts(tool_context: ToolContext) -> str:
     """
     Creates a self-contained version of the comic and saves all assets
-    as ADK artifacts for immediate viewing in the UI.
+    as ADK artifacts for immediate viewing in the UI. This pulls content from S3.
 
     This includes:
-    1. Saving all individual panel images as artifacts.
-    2. Generating a self-contained HTML (with embedded base64 images) as an artifact.
-    3. Generating a Markdown version of the comic as an artifact.
+    1. Saving all individual panel images as artifacts (fetched from S3).
+    2. Generating a self-contained HTML (with embedded base64 images fetched from S3) as an artifact.
+    3. Generating a Markdown version of the comic as an artifact (based on HTML from S3).
 
     Returns:
         A confirmation message with instructions on how to view.
     """
-    output_dir = "output"
-    images_dir = os.path.join(output_dir, "images")
-    html_path = os.path.join(output_dir, "comic.html")
-
-    if not os.path.exists(output_dir):
-        return "Error: 'output/' directory not found. Please run Agent3 first."
+    s3_client = _get_s3_client()
+    if not s3_client:
+        return "Failed to initialize S3 client. Please check AWS credentials."
 
     results = []
 
-    # 1. Save individual images as artifacts
-    images = []
-    if os.path.exists(images_dir):
-        images = sorted(
-            [
-                f
-                for f in os.listdir(images_dir)
-                if f.lower().endswith((".png", ".jpg", ".jpeg"))
-            ]
-        )
+    # 1. Save individual images as artifacts (fetched from S3)
+    s3_objects = _list_s3_objects(s3_client, S3_BUCKET_NAME)
+    image_keys = sorted(
+        [
+            key
+            for key in s3_objects
+            if key.lower().endswith((".png", ".jpg", ".jpeg"))
+        ]
+    )
 
-    for image_name in images:
-        image_path = os.path.join(images_dir, image_name)
+    for image_key in image_keys:
         try:
-            with open(image_path, "rb") as f:
-                image_bytes = f.read()
+            image_bytes = _read_s3_object(s3_client, S3_BUCKET_NAME, image_key)
+            if image_bytes is None:
+                raise Exception(f"Could not read image {image_key} from S3.")
 
             mime_type = (
-                "image/png" if image_name.lower().endswith(".png") else "image/jpeg"
+                "image/png"
+                if image_key.lower().endswith(".png")
+                else "image/jpeg"
             )
             image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
-            await tool_context.save_artifact(f"panel_{image_name}", image_part)
+            # Use just the filename as the artifact name
+            artifact_filename = os.path.basename(image_key)
+            await tool_context.save_artifact(f"panel_{artifact_filename}", image_part)
         except Exception as e:
-            logger.error(f"Failed to save image artifact {image_name}: {e}")
+            logger.error(f"Failed to save image artifact {image_key} from S3: {e}")
 
-    results.append(f"Saved {len(images)} panels as artifacts.")
+    results.append(f"Saved {len(image_keys)} panel images from S3 as artifacts.")
 
-    # 2. Create self-contained HTML (with base64 images)
-    if os.path.exists(html_path):
+    # 2. Create self-contained HTML (with base64 images fetched from S3)
+    html_key = "comic.html"
+    html_content_bytes = _read_s3_object(s3_client, S3_BUCKET_NAME, html_key)
+
+    if html_content_bytes is None:
+        results.append(f"Error: '{html_key}' was not found in S3 bucket '{S3_BUCKET_NAME}'. Cannot create self-contained HTML.")
+    else:
         try:
-            with open(html_path, "r") as f:
-                html_content = f.read()
+            html_content = html_content_bytes.decode('utf-8')
 
-            # Replace image sources with base64 data
-            def embed_image(match):
-                img_src = match.group(1)
-                # Resolve path - assuming src is relative to output/
-                # e.g. src="images/panel_1.png"
-                full_img_path = os.path.join(output_dir, img_src)
-                if os.path.exists(full_img_path):
-                    with open(full_img_path, "rb") as img_f:
-                        img_data = base64.b64encode(img_f.read()).decode("utf-8")
-                    ext = os.path.splitext(img_src)[1].lower().strip(".")
+            # Replace image sources with base64 data, fetching from S3
+            def embed_image_from_s3(match):
+                img_src_key = match.group(1) # This is like "panel_1.png" or "images/panel_1.png"
+                
+                # Agent3 uploads images directly to the bucket root
+                s3_image_key = img_src_key.replace("images/", "") 
+                
+                img_data_bytes = _read_s3_object(s3_client, S3_BUCKET_NAME, s3_image_key)
+                if img_data_bytes:
+                    img_data = base64.b64encode(img_data_bytes).decode("utf-8")
+                    ext = os.path.splitext(img_src_key)[1].lower().strip(".")
                     return f'src="data:image/{ext};base64,{img_data}"'
+                logger.warning(f"Image {s3_image_key} not found in S3 for embedding.")
                 return match.group(0)  # Keep original if not found
 
             embedded_html = re.sub(
-                r'src=["\']([^"\']+\.(?:png|jpg|jpeg))["\']', embed_image, html_content
+                r'src=["\']([^"\']+\.(?:png|jpg|jpeg))["\']', embed_image_from_s3, html_content
             )
 
             html_artifact = types.Part.from_bytes(
@@ -140,35 +183,36 @@ async def export_comic_to_artifacts(tool_context: ToolContext) -> str:
             )
             await tool_context.save_artifact("view_full_comic.html", html_artifact)
             results.append(
-                "Generated self-contained HTML artifact: 'view_full_comic.html'"
+                "Generated self-contained HTML artifact from S3: 'view_full_comic.html'"
             )
         except Exception as e:
-            logger.error(f"Failed to create self-contained HTML: {e}")
-            results.append(f"Failed to generate self-contained HTML: {e}")
+            logger.error(f"Failed to create self-contained HTML from S3: {e}")
+            results.append(f"Failed to generate self-contained HTML from S3: {e}")
 
-    # 3. Create a Markdown version
+    # 3. Create a Markdown version (based on HTML from S3)
     try:
         # Simple markdown conversion
         md_content = "# Comic Book Preview\n\n"
         md_content += "This is a preview of your generated comic book. Check the 'Artifacts' tab to see the individual panels and the full HTML view.\n\n"
 
-        if os.path.exists(html_path):
-            with open(html_path, "r") as f:
-                content = f.read()
+        if html_content_bytes: # Use the content fetched for HTML embedding
+            content = html_content_bytes.decode('utf-8')
             # Extract basic text for the MD
             text_summary = re.sub("<[^<]+?>", "\n", content)
             md_content += "## Story Summary\n"
             md_content += "\n".join(
                 [line.strip() for line in text_summary.split("\n") if line.strip()][:30]
             )
+        else:
+            md_content += "Could not generate full summary as comic.html was not found in S3.\n"
 
         md_artifact = types.Part.from_bytes(
             data=md_content.encode("utf-8"), mime_type="text/markdown"
         )
         await tool_context.save_artifact("comic_preview.md", md_artifact)
-        results.append("Generated Markdown summary artifact: 'comic_preview.md'")
+        results.append("Generated Markdown summary artifact from S3: 'comic_preview.md'")
     except Exception as e:
-        logger.error(f"Failed to create MD artifact: {e}")
+        logger.error(f"Failed to create MD artifact from S3: {e}")
 
     return (
         "\n".join(results)

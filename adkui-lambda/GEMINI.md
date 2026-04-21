@@ -8,6 +8,12 @@ This project implements a multi-agent system using the **Google ADK** to automat
 
 It is based on the solution to the codelab: [Create a low-code agent with ADK visual builder](https://codelabs.developers.google.com/codelabs/create-low-code-agent-with-ADK-visual-builder)
 
+use lambda docs:
+
+https://docs.aws.amazon.com/lambda/latest/dg/urls-configuration.html
+
+https://docs.aws.amazon.com/lambda/latest/dg/images-create.html
+
 ## Key Technologies
 
 *   **Framework:** Google ADK (Agent Development Kit) [Docs](https://google.github.io/adk-docs/)
