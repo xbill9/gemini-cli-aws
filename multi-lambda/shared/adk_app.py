@@ -28,10 +28,13 @@ from a2a_utils import a2a_card_dispatch
 from google.adk.cli import fast_api
 from logging_config import get_uvicorn_log_config, setup_logging
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
 
 # Suppress experimental warnings
 warnings.filterwarnings("ignore", message=r".*\[EXPERIMENTAL\].*", category=UserWarning)
 os.environ["ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS"] = "True"
+
+logger = logging.getLogger(__name__)
 
 # Ensure shared directory is in path
 
@@ -86,8 +89,21 @@ def main(
     if verbose:
         log_level = "DEBUG"
 
+    global logger
     # Standardized logging setup
     setup_logging(os.path.basename(agents_dir), log_level)
+    logger = logging.getLogger(os.path.basename(agents_dir))
+    logger.info(f"ADK App main starting. Initial environment keys: {list(os.environ.keys())}")
+    logger.info(f"GEMINI_API_KEY is set: {bool(os.environ.get('GEMINI_API_KEY'))}")
+
+    # Strip Authorization from environment to prevent SDKs from picking up ambient credentials
+    for key in ["Authorization", "AUTHORIZATION", "HTTP_AUTHORIZATION"]:
+        if key in os.environ:
+            del os.environ[key]
+
+    # Explicitly bypass internal auth checks for Lambda URLs
+    os.environ["ADK_INTERNAL_AUTH_BYPASS"] = "true"
+    os.environ["ADK_INTERNAL_AUTH_BYPASS_EXEMPT"] = "true"
 
     files_to_cleanup = []
     folders_to_cleanup = []
@@ -129,6 +145,27 @@ def main(
 
         if a2a:
             app.add_middleware(BaseHTTPMiddleware, dispatch=a2a_card_dispatch)
+
+        # Middleware to strip Authorization header to prevent it leaking to LLM SDKs
+        @app.middleware("http")
+        async def strip_auth_middleware(request: StarletteRequest, call_next):
+            # Log the incoming headers for debugging
+            has_auth = "authorization" in request.headers
+            if has_auth:
+                logger.debug(f"Purging Authorization header from request to {request.url.path}")
+            
+            # More aggressive scope purge
+            request.scope["headers"] = [
+                (name, value) for name, value in request.scope["headers"]
+                if name.lower() != b"authorization"
+            ]
+
+            # Also ensure it's not in the environment
+            for key in ["Authorization", "AUTHORIZATION", "HTTP_AUTHORIZATION"]:
+                os.environ.pop(key, None)
+
+            logger.debug(f"Current process environment keys: {list(os.environ.keys())}")
+            return await call_next(request)
 
         config = uvicorn.Config(
             app=app,

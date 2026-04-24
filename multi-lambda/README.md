@@ -1,36 +1,31 @@
-# AI Course Creator (Distributed Multi-Agent System - AWS Lambda)
+# AI Course Creator (Distributed Multi-Agent System - AWS Lambda Stack)
 
-A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol, deployed on **AWS Lambda**. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
+A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol, deployed on **AWS Lambda** as a unified container stack. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
 
 ## Architecture
 
-This project uses a distributed microservices architecture where each agent runs in its own container and communicates via the A2A protocol:
+This project uses a distributed microservices architecture where all services are deployed from a **single unified container image** to AWS Lambda:
 
-*   **Orchestrator Service (`agents/orchestrator`):** Manages the overall course creation pipeline using **`SequentialAgent`**. It implements an iterative Research-Judge loop with **`LoopAgent`** (max 2 iterations). Key components include **`TopicCapturer`**, **`EscalationChecker`**, **`ResearchGuard`**, **`StateCapturer`**, and **`ProgressAgent`** for status updates.
+*   **Course Builder Gateway (`app/`):** The **External Gateway** for the system. It serves the Vanilla TypeScript + Vite frontend and provides the FastAPI backend that orchestrates the streaming process.
+*   **Orchestrator Service (`agents/orchestrator`):** Manages the overall course creation pipeline. It implements an iterative Research-Judge loop using specialized ADK agents.
 *   **Researcher Service (`agents/researcher`):** Gathers detailed topic information using the `google_search` tool.
-*   **Judge Service (`agents/judge`):** Evaluates research quality against a Pydantic schema (`JudgeFeedback`).
-*   **Content Builder Service (`agents/content_builder`):** Compiles validated research into a professional Markdown course module.
-*   **Web App (`app/`):** A FastAPI backend with a Vanilla TypeScript + Vite frontend that streams real-time agent events via SSE.
+*   **Judge Service (`agents/judge`):** Evaluates research quality.
+*   **Content Builder Agent (`agents/content_builder`):** Compiles validated research into professional Markdown modules.
 
 ## Project Structure
 
 ```
-multi-agent/
+multi-lambda/
+├── Dockerfile            # Unified stack image for all services
 ├── agents/
-│   ├── orchestrator/     # Workflow management & remote agent connections
-│   ├── researcher/       # Information gathering (Google Search)
-│   ├── judge/            # Quality control (Structured Feedback)
+│   ├── orchestrator/     # Workflow management
+│   ├── researcher/       # Information gathering
+│   ├── judge/            # Quality control
 │   └── content_builder/  # Content generation (Markdown)
-├── app/                  # Web application (FastAPI + Vanilla TS Frontend)
-├── shared/               # Shared utilities (Symlinked into agents)
-│   ├── a2a_utils.py      # A2A URL rewriting middleware
-│   ├── adk_app.py        # Standardized ADK FastAPI wrapper
-│   ├── authenticated_httpx.py # Service-to-service auth utilities
-│   └── logging_config.py # Centralized logging configuration
-├── lambda/               # AWS Lambda deployment scripts
-├── Makefile              # Development shortcuts
-├── run_local.sh          # Local development startup script
-├── set_env.sh            # Local .env generation script
+├── app/                  # Gateway (FastAPI + Frontend)
+├── shared/               # Shared utilities
+├── lambda/               # AWS Lambda stack deployment scripts
+├── Makefile              # Development shortcuts (make deploy-lambda)
 └── *_test.sh             # Agent-specific testing scripts
 ```
 

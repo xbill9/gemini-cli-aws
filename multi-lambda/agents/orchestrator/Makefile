@@ -20,7 +20,7 @@ GENAI_MODEL ?= gemini-2.5-flash
 AGENT_NAME ?= orchestrator
 TOPIC ?= The impact of AI on software engineering
 
-.PHONY: all help install run start stop status lint format test deploy clean a2a test-invoke test-local endpoint check-env
+.PHONY: all help install run start stop status lint format test clean a2a test-local check-env
 
 # Default target
 all: run
@@ -37,16 +37,13 @@ help:
 	@echo "  run          - Run the agent locally on port $(PORT)"
 	@echo "  start        - Start the agent in background"
 	@echo "  stop         - Stop the local agent"
-	@echo "  status       - Check local and remote service status"
+	@echo "  status       - Check local service status"
 	@echo "  lint         - Run linting (ruff)"
 	@echo "  format       - Run formatting (ruff format)"
 	@echo "  test         - Run tests (pytest)"
 	@echo "  a2a          - Fetch the A2A Agent Card"
-	@echo "  test-invoke  - Test the agent endpoint with a research TOPIC (prefers Cloud Run if deployed)"
 	@echo "  test-local   - Test the local agent endpoint with a research TOPIC"
 	@echo "  clean        - Remove temporary files and cache"
-	@echo "  deploy       - Deploy to Google Cloud Run"
-	@echo "  endpoint     - Get the deployed service URL"
 
 # Install dependencies
 install:

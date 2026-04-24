@@ -1,5 +1,5 @@
 #!/bin/bash
-# lambda/deploy-lambda.sh - Deploy Multi-Agent System to AWS Lambda
+# lambda/deploy-lambda.sh - Deploy Multi-Agent System as a Stack to AWS Lambda
 
 # Exit on error
 set -e
@@ -12,6 +12,7 @@ fi
 # Default configurations
 AWS_REGION=${AWS_REGION:-"us-east-1"}
 SERVICE_PREFIX="course-creator"
+STACK_NAME="${SERVICE_PREFIX}-stack"
 IMAGE_TAG="latest"
 
 # Get Account ID
@@ -36,158 +37,123 @@ fi
 echo "Logging in to Amazon ECR..."
 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
 
-# Agents to deploy
-AGENT_NAMES=("researcher" "judge" "content-builder")
-DECLARE_URLS=()
+# Create ECR repo for the stack if not exists
+echo "Ensuring ECR repository ${STACK_NAME} exists..."
+aws ecr describe-repositories --repository-names ${STACK_NAME} --region ${AWS_REGION} > /dev/null 2>&1 || \
+    aws ecr create-repository --repository-name ${STACK_NAME} --region ${AWS_REGION}
 
-# 1. Deploy Sub-Agents
-for name in "${AGENT_NAMES[@]}"; do
-    REPO_NAME="${SERVICE_PREFIX}-${name}"
-    FULL_IMAGE_NAME="${ECR_URL}/${REPO_NAME}:${IMAGE_TAG}"
-    FUNCTION_NAME="${SERVICE_PREFIX}-${name}"
+FULL_IMAGE_NAME="${ECR_URL}/${STACK_NAME}:${IMAGE_TAG}"
 
-    echo "--- Deploying Sub-Agent: $name ---"
+# 1. Build and Push the Unified Image
+echo "Building unified Docker image..."
+docker build -t "${STACK_NAME}:${IMAGE_TAG}" .
+docker tag "${STACK_NAME}:${IMAGE_TAG}" "${FULL_IMAGE_NAME}"
+docker push "${FULL_IMAGE_NAME}"
+
+# Function to deploy/update a Lambda from the stack image
+deploy_lambda() {
+    local func_name=$1
+    local cmd=$2
+    local timeout=$3
+    local memory=$4
+    local env_vars=$5
+
+    echo "--- Deploying Lambda: ${func_name} ---"
     
-    # Create ECR repo if not exists
-    aws ecr describe-repositories --repository-names ${REPO_NAME} --region ${AWS_REGION} > /dev/null 2>&1 || \
-        aws ecr create-repository --repository-name ${REPO_NAME} --region ${AWS_REGION}
-
-    # Build and Push
-    DOCKERFILE_PATH="agents/${name//-/_}/Dockerfile"
-    docker build -t "${REPO_NAME}:${IMAGE_TAG}" -f "${DOCKERFILE_PATH}" .
-    docker tag "${REPO_NAME}:${IMAGE_TAG}" "${FULL_IMAGE_NAME}"
-    docker push "${FULL_IMAGE_NAME}"
-
-    # Create/Update Lambda
-    if aws lambda get-function --function-name ${FUNCTION_NAME} --region ${AWS_REGION} > /dev/null 2>&1; then
-        echo "Updating existing Lambda function ${FUNCTION_NAME}..."
-        aws lambda update-function-code --region ${AWS_REGION} --function-name ${FUNCTION_NAME} --image-uri ${FULL_IMAGE_NAME}
-        # Wait for update to complete
-        aws lambda wait function-updated-v2 --function-name ${FUNCTION_NAME} --region ${AWS_REGION}
+    if aws lambda get-function --function-name ${func_name} --region ${AWS_REGION} > /dev/null 2>&1; then
+        echo "Updating code for ${func_name}..."
+        aws lambda update-function-code --region ${AWS_REGION} --function-name ${func_name} --image-uri ${FULL_IMAGE_NAME}
+        aws lambda wait function-updated-v2 --function-name ${func_name} --region ${AWS_REGION}
+        
+        echo "Updating configuration for ${func_name}..."
+        aws lambda update-function-configuration --region ${AWS_REGION} --function-name ${func_name} \
+            --timeout ${timeout} --memory-size ${memory} \
+            --image-config "Command=${cmd}" \
+            --environment "Variables={${env_vars}}"
+        
+        # Ensure Function URL is BUFFERED
+        aws lambda update-function-url-config --function-name ${func_name} \
+            --region ${AWS_REGION} \
+            --invoke-mode BUFFERED || true
+        
+        # Ensure permissions exist
+        aws lambda add-permission --function-name ${func_name} \
+            --region ${AWS_REGION} \
+            --statement-id FunctionURLPublicAccess \
+            --action lambda:InvokeFunctionUrl \
+            --principal "*" \
+            --function-url-auth-type NONE || true
+        
+        aws lambda add-permission --function-name ${func_name} \
+            --region ${AWS_REGION} \
+            --statement-id AllAccess \
+            --action lambda:InvokeFunction \
+            --principal "*" || true
     else
-        echo "Creating new Lambda function ${FUNCTION_NAME}..."
+        echo "Creating new function ${func_name}..."
         aws lambda create-function --region ${AWS_REGION} \
-            --function-name ${FUNCTION_NAME} \
+            --function-name ${func_name} \
             --role ${LAMBDA_ROLE_ARN} \
             --package-type Image \
             --code ImageUri=${FULL_IMAGE_NAME} \
-            --timeout 300 \
-            --memory-size 512
-        aws lambda wait function-active-v2 --function-name ${FUNCTION_NAME} --region ${AWS_REGION}
+            --timeout ${timeout} \
+            --memory-size ${memory} \
+            --image-config "Command=${cmd}" \
+            --environment "Variables={${env_vars}}"
+        
+        aws lambda wait function-active-v2 --function-name ${func_name} --region ${AWS_REGION}
         
         # Create Function URL
-        aws lambda create-function-url-config --function-name ${FUNCTION_NAME} \
+        aws lambda create-function-url-config --function-name ${func_name} \
             --region ${AWS_REGION} \
             --auth-type NONE \
             --invoke-mode BUFFERED
         
-        # Add permission
-        aws lambda add-permission --function-name ${FUNCTION_NAME} \
+        # Add permissions
+        aws lambda add-permission --function-name ${func_name} \
             --region ${AWS_REGION} \
             --statement-id FunctionURLPublicAccess \
             --action lambda:InvokeFunctionUrl \
             --principal "*" \
             --function-url-auth-type NONE
+        
+        aws lambda add-permission --function-name ${func_name} \
+            --region ${AWS_REGION} \
+            --statement-id AllAccess \
+            --action lambda:InvokeFunction \
+            --principal "*"
     fi
+}
 
-    # Get Function URL
-    F_URL=$(aws lambda get-function-url-config --function-name ${FUNCTION_NAME} --region ${AWS_REGION} --query 'FunctionUrl' --output text)
-    echo "Sub-Agent $name URL: ${F_URL}"
-    
-    # Store URL for Orchestrator
-    case $name in
-        "researcher") RESEARCHER_URL="${F_URL}a2a/researcher/.well-known/agent-card.json" ;;
-        "judge") JUDGE_URL="${F_URL}a2a/judge/.well-known/agent-card.json" ;;
-        "content-builder") CONTENT_BUILDER_URL="${F_URL}a2a/content_builder/.well-known/agent-card.json" ;;
-    esac
-done
+get_f_url() {
+    aws lambda get-function-url-config --function-name $1 --region ${AWS_REGION} --query 'FunctionUrl' --output text
+}
 
-# 2. Deploy Orchestrator
-NAME="orchestrator"
-REPO_NAME="${SERVICE_PREFIX}-${NAME}"
-FULL_IMAGE_NAME="${ECR_URL}/${REPO_NAME}:${IMAGE_TAG}"
-FUNCTION_NAME="${SERVICE_PREFIX}-${NAME}"
+# 2. Deploy Sub-Agents
 GEMINI_API_KEY=$(cat ${HOME}/gemini.key 2>/dev/null || echo "")
+AGENT_ENV="GEMINI_API_KEY=${GEMINI_API_KEY},GOOGLE_API_KEY=${GEMINI_API_KEY},GENAI_MODEL=gemini-2.5-flash,LOG_LEVEL=INFO,GOOGLE_GENAI_USE_VERTEXAI=False"
 
-echo "--- Deploying Orchestrator ---"
+deploy_lambda "${SERVICE_PREFIX}-researcher" '["python", "-m", "shared.adk_app", "--host", "0.0.0.0", "--port", "8080", "--a2a", "agents/researcher"]' 300 512 "${AGENT_ENV}"
+RESEARCHER_URL=$(get_f_url "${SERVICE_PREFIX}-researcher")
 
-# Create ECR repo if not exists
-aws ecr describe-repositories --repository-names ${REPO_NAME} --region ${AWS_REGION} > /dev/null 2>&1 || \
-    aws ecr create-repository --repository-name ${REPO_NAME} --region ${AWS_REGION}
+deploy_lambda "${SERVICE_PREFIX}-judge" '["python", "-m", "shared.adk_app", "--host", "0.0.0.0", "--port", "8080", "--a2a", "agents/judge"]' 300 512 "${AGENT_ENV}"
+JUDGE_URL=$(get_f_url "${SERVICE_PREFIX}-judge")
 
-# Build and Push
-docker build -t "${REPO_NAME}:${IMAGE_TAG}" -f "agents/orchestrator/Dockerfile" .
-docker tag "${REPO_NAME}:${IMAGE_TAG}" "${FULL_IMAGE_NAME}"
-docker push "${FULL_IMAGE_NAME}"
+deploy_lambda "${SERVICE_PREFIX}-content-builder" '["python", "-m", "shared.adk_app", "--host", "0.0.0.0", "--port", "8080", "--a2a", "agents/content_builder"]' 300 512 "${AGENT_ENV}"
+CONTENT_BUILDER_URL=$(get_f_url "${SERVICE_PREFIX}-content-builder")
 
-# Create/Update Lambda
-if aws lambda get-function --function-name ${FUNCTION_NAME} --region ${AWS_REGION} > /dev/null 2>&1; then
-    echo "Updating existing Orchestrator function..."
-    aws lambda update-function-code --region ${AWS_REGION} --function-name ${FUNCTION_NAME} --image-uri ${FULL_IMAGE_NAME}
-    aws lambda wait function-updated-v2 --function-name ${FUNCTION_NAME} --region ${AWS_REGION}
-else
-    echo "Creating new Orchestrator function..."
-    aws lambda create-function --region ${AWS_REGION} \
-        --function-name ${FUNCTION_NAME} \
-        --role ${LAMBDA_ROLE_ARN} \
-        --package-type Image \
-        --code ImageUri=${FULL_IMAGE_NAME} \
-        --timeout 600 \
-        --memory-size 1024
-    aws lambda wait function-active-v2 --function-name ${FUNCTION_NAME} --region ${AWS_REGION}
-    aws lambda create-function-url-config --function-name ${FUNCTION_NAME} --region ${AWS_REGION} --auth-type NONE --invoke-mode BUFFERED
-    aws lambda add-permission --function-name ${FUNCTION_NAME} --region ${AWS_REGION} --statement-id FunctionURLPublicAccess --action lambda:InvokeFunctionUrl --principal "*" --function-url-auth-type NONE
-fi
+# 3. Deploy Orchestrator
+ORCH_ENV="RESEARCHER_AGENT_CARD_URL=${RESEARCHER_URL}a2a/researcher/.well-known/agent-card.json,JUDGE_AGENT_CARD_URL=${JUDGE_URL}a2a/judge/.well-known/agent-card.json,CONTENT_BUILDER_AGENT_CARD_URL=${CONTENT_BUILDER_URL}a2a/content_builder/.well-known/agent-card.json,GEMINI_API_KEY=${GEMINI_API_KEY},GOOGLE_API_KEY=${GEMINI_API_KEY},GENAI_MODEL=gemini-2.5-flash,GOOGLE_GENAI_USE_VERTEXAI=False"
 
-# Update Environment Variables for Orchestrator
-aws lambda update-function-configuration --region ${AWS_REGION} --function-name ${FUNCTION_NAME} \
-    --environment "Variables={RESEARCHER_AGENT_CARD_URL=${RESEARCHER_URL},JUDGE_AGENT_CARD_URL=${JUDGE_URL},CONTENT_BUILDER_AGENT_CARD_URL=${CONTENT_BUILDER_URL},GEMINI_API_KEY=${GEMINI_API_KEY},GENAI_MODEL=gemini-2.5-flash}"
+deploy_lambda "${SERVICE_PREFIX}-orchestrator" '["python", "-m", "shared.adk_app", "--host", "0.0.0.0", "--port", "8080", "agents/orchestrator"]' 600 1024 "${ORCH_ENV}"
+aws lambda update-function-url-config --function-name "${SERVICE_PREFIX}-orchestrator" --region ${AWS_REGION} --invoke-mode BUFFERED || true
+ORCHESTRATOR_URL=$(get_f_url "${SERVICE_PREFIX}-orchestrator")
 
-# Get Orchestrator URL
-ORCHESTRATOR_URL=$(aws lambda get-function-url-config --function-name ${FUNCTION_NAME} --region ${AWS_REGION} --query 'FunctionUrl' --output text)
-echo "Orchestrator URL: ${ORCHESTRATOR_URL}"
+# 4. Deploy Course Builder Gateway (was 'app')
+GATEWAY_ENV="AGENT_SERVER_URL=${ORCHESTRATOR_URL},AGENT_NAME=orchestrator,PORT=8080,AWS_LWA_READINESS_CHECK_TIMEOUT=30000,LOG_LEVEL=DEBUG"
+deploy_lambda "${SERVICE_PREFIX}-course-builder" '["python", "app/main.py"]' 300 1024 "${GATEWAY_ENV}"
 
-# 3. Deploy App
-NAME="app"
-REPO_NAME="${SERVICE_PREFIX}-${NAME}"
-FULL_IMAGE_NAME="${ECR_URL}/${REPO_NAME}:${IMAGE_TAG}"
-FUNCTION_NAME="${SERVICE_PREFIX}-${NAME}"
-
-echo "--- Deploying App ---"
-
-# Create ECR repo if not exists
-aws ecr describe-repositories --repository-names ${REPO_NAME} --region ${AWS_REGION} > /dev/null 2>&1 || \
-    aws ecr create-repository --repository-name ${REPO_NAME} --region ${AWS_REGION}
-
-# Build and Push
-docker build -t "${REPO_NAME}:${IMAGE_TAG}" -f "app/Dockerfile" .
-docker tag "${REPO_NAME}:${IMAGE_TAG}" "${FULL_IMAGE_NAME}"
-docker push "${FULL_IMAGE_NAME}"
-
-# Create/Update Lambda
-if aws lambda get-function --function-name ${FUNCTION_NAME} --region ${AWS_REGION} > /dev/null 2>&1; then
-    echo "Updating existing App function..."
-    aws lambda update-function-code --region ${AWS_REGION} --function-name ${FUNCTION_NAME} --image-uri ${FULL_IMAGE_NAME}
-    aws lambda wait function-updated-v2 --function-name ${FUNCTION_NAME} --region ${AWS_REGION}
-else
-    echo "Creating new App function..."
-    aws lambda create-function --region ${AWS_REGION} \
-        --function-name ${FUNCTION_NAME} \
-        --role ${LAMBDA_ROLE_ARN} \
-        --package-type Image \
-        --code ImageUri=${FULL_IMAGE_NAME} \
-        --timeout 300 \
-        --memory-size 512
-    aws lambda wait function-active-v2 --function-name ${FUNCTION_NAME} --region ${AWS_REGION}
-    aws lambda create-function-url-config --function-name ${FUNCTION_NAME} --region ${AWS_REGION} --auth-type NONE --invoke-mode BUFFERED
-    aws lambda add-permission --function-name ${FUNCTION_NAME} --region ${AWS_REGION} --statement-id FunctionURLPublicAccess --action lambda:InvokeFunctionUrl --principal "*" --function-url-auth-type NONE
-fi
-
-# Update Environment Variables for App
-aws lambda update-function-configuration --region ${AWS_REGION} --function-name ${FUNCTION_NAME} \
-    --environment "Variables={AGENT_SERVER_URL=${ORCHESTRATOR_URL},AGENT_NAME=orchestrator,PORT=8080}"
-
-APP_URL=$(aws lambda get-function-url-config --function-name ${FUNCTION_NAME} --region ${AWS_REGION} --query 'FunctionUrl' --output text)
+APP_URL=$(get_f_url "${SERVICE_PREFIX}-course-builder")
 
 echo "--- Deployment Complete ---"
-echo "Public App URL: ${APP_URL}"
+echo "Public Course Builder Gateway URL: ${APP_URL}"

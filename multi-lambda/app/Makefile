@@ -6,16 +6,11 @@ PYTHON = python3
 PIP = pip3
 PORT ?= 8000
 
-# Cloud Run Deployment Variables
-REGION       ?= us-central1
-SERVICE_NAME ?= course-creator
-ORCHESTRATOR_URL = $(shell gcloud run services describe orchestrator --region $(REGION) --format='value(status.url)' --project $(PROJECT_ID) 2>/dev/null)
-
 # Agent context (for testing)
 AGENT_NAME ?= $(SERVICE_NAME)
 TOPIC ?= The impact of AI on software engineering
 
-.PHONY: install build-frontend run start stop lint format test check clean help deploy endpoint status check-env a2a test-invoke test-local
+.PHONY: install build-frontend run start stop lint format test check clean help a2a test-local
 
 help:
 	@echo "Available commands:"
@@ -29,11 +24,7 @@ help:
 	@echo "  test             - Run all project tests from the root directory"
 	@echo "  check            - Run lint and test"
 	@echo "  clean            - Remove temporary files, caches, and build artifacts"
-	@echo "  deploy           - Deploy the web app to Cloud Run"
-	@echo "  endpoint         - Show the URL of the deployed Cloud Run service"
-	@echo "  status           - Show the status of the local and deployed service"
 	@echo "  a2a              - Fetch the A2A Agent Card"
-	@echo "  test-invoke      - Test the chat endpoint (prefers Cloud Run if deployed)"
 	@echo "  test-local       - Test the local chat endpoint"
 
 check-env:

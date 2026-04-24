@@ -50,9 +50,10 @@ Service-to-service communication is secured using Google Cloud Identity Tokens (
 
 ### Shared Utilities & Docker Integration
 
-Core logic is stored in `shared/` and symlinked (or copied) into each agent's directory to ensure consistency:
--   **`adk_app.py`**: A standardized FastAPI entry point used by all agent Dockerfiles. It handles agent loading, A2A registration, logging setup, and includes the A2A URL rewriting middleware.
--   **AWS Lambda Web Adapter**: Each Dockerfile includes the AWS Lambda Web Adapter (`aws-lambda-adapter`) to allow standard HTTP servers (like uvicorn) to run on AWS Lambda.
+Core logic is stored in `shared/` and shared across all services:
+-   **`adk_app.py`**: A standardized FastAPI entry point used by all agents. It handles agent loading, A2A registration, logging setup, and includes the A2A URL rewriting middleware.
+-   **Unified Dockerfile**: A single `Dockerfile` in the project root builds a unified image containing all code and dependencies.
+-   **AWS Lambda Web Adapter**: The unified Dockerfile includes the AWS Lambda Web Adapter (`aws-lambda-adapter`), allowing standard HTTP servers (like uvicorn) to run on AWS Lambda.
 
 ## Model Selection & Optimization
 
@@ -77,25 +78,28 @@ Run the following commands to validate the system:
 
 ## Deployment to Amazon AWS (Lambda)
 
-The multi-agent system is deployed to AWS Lambda as a set of Container Image functions.
+The multi-agent system is deployed to AWS Lambda as a **Stack** of functions sharing a single unified Container Image. This ensures consistency across services and simplifies deployment.
 
 ```bash
-# Deploy all services
+# Build the unified stack image
+make build-stack
+
+# Deploy all services as a stack
 make deploy-lambda
 
-# Check status
+# Check status of the stack
 make lambda-status
 
-# Get public endpoint
+# Get the public gateway endpoint
 make endpoint-lambda
 ```
 
-### Components
-1. `course-creator-researcher`: Sub-agent for research.
-2. `course-creator-judge`: Sub-agent for quality control.
-3. `course-creator-content-builder`: Sub-agent for content generation.
-4. `course-creator-orchestrator`: Orchestrates the agents.
-5. `course-creator-app`: Frontend and API backend.
+### Stack Components
+1. `course-creator-course-builder`: **The External Gateway**. Serves the frontend and provides the API for course creation.
+2. `course-creator-orchestrator`: Orchestrates the research and content generation workflow.
+3. `course-creator-researcher`: Sub-agent for information gathering.
+4. `course-creator-judge`: Sub-agent for quality control.
+5. `course-creator-content-builder`: Sub-agent for transforming research into Markdown modules.
 
 ## Developer Workflow
 

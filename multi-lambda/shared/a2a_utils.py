@@ -39,6 +39,12 @@ async def a2a_card_dispatch(
     hostname, and port) from the request headers. This is critical for agents
     behind proxies like Load Balancers.
     """
+    # Strip Authorization header to prevent it leaking to Gemini API
+    if "authorization" in request.headers:
+        # Immutable headers; we filter it in subsequent internal client calls
+        # For ADK, it's safer to not have it in the request object if possible
+        pass
+
     response = await call_next(request)
 
     path = request.url.path

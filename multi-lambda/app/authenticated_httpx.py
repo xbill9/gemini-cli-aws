@@ -103,28 +103,42 @@ class _IdentityTokenAuth(httpx.Auth):
             )
         return None
 
-
 def create_authenticated_client(
-    remote_service_url: str, timeout: float = DEFAULT_TIMEOUT
+    remote_service_url: str, timeout: float = DEFAULT_TIMEOUT, force_bypass: bool = False
 ) -> httpx.AsyncClient:
     """Creates an httpx.AsyncClient with Google identity token authentication.
 
     Identity tokens are automatically sourced from the environment:
       - Locally: Uses 'gcloud auth print-identity-token'.
+      - Cloud: Uses the environment's metadata server.
 
     Args:
         remote_service_url: URL of the target service.
         timeout: Request timeout (defaults to ADK DEFAULT_TIMEOUT).
+        force_bypass: If True, skip authentication regardless of URL.
 
     Returns:
         An authenticated httpx.AsyncClient.
     """
-    if "localhost" in remote_service_url or "127.0.0.1" in remote_service_url:
-        logger.info(f"Bypassing authentication for local URL: {remote_service_url}")
+    parsed_url = urlparse(remote_service_url)
+    # Check if it's a local or internal service call
+    skip_auth = force_bypass or \
+                "localhost" in remote_service_url or \
+                "127.0.0.1" in remote_service_url or \
+                "." not in parsed_url.netloc or \
+                "lambda-url" in remote_service_url or \
+                ".on.aws" in remote_service_url
+
+    if skip_auth:
+        logger.info(f"Bypassing authentication for: {remote_service_url}")
+        # Return a client with NO default headers to prevent leakage
         return httpx.AsyncClient(
+            base_url=remote_service_url,
             follow_redirects=True,
             timeout=timeout,
+            headers={}, # Explicitly clear headers
         )
+
 
     return httpx.AsyncClient(
         auth=_IdentityTokenAuth(remote_service_url),

@@ -25,7 +25,7 @@ export GOOGLE_API_KEY
 TOPIC ?= Please generate a course module based on these findings.
 RESEARCH_FINDINGS ?= The Gemini 2.5 models are the latest from Google. They offer improved reasoning and speed. Key features include large context windows and native multimodal capabilities.
 
-.PHONY: help install run start stop lint format test clean build deploy a2a endpoint test-invoke status test-local
+.PHONY: help install run start stop lint format test clean a2a status test-local
 
 help:
 	@echo "Available targets:"
@@ -33,16 +33,12 @@ help:
 	@echo "  run          - Run the agent locally on port $(PORT)"
 	@echo "  start        - Start the agent in background"
 	@echo "  stop         - Stop the local agent"
-	@echo "  status       - Check local and remote service status"
+	@echo "  status       - Check local service status"
 	@echo "  lint         - Run linting (ruff)"
 	@echo "  format       - Run formatting (ruff format)"
 	@echo "  test         - Run tests (pytest)"
 	@echo "  clean        - Remove temporary files and cache"
-	@echo "  build        - Build and deploy using Cloud Build"
-	@echo "  deploy       - Deploy to Cloud Run"
-	@echo "  endpoint     - Get the Cloud Run service URL"
 	@echo "  a2a          - Fetch the A2A agent card (uses SERVICE_URL if set/found, else localhost)"
-	@echo "  test-invoke  - Call the agent endpoint with a research TOPIC and RESEARCH_FINDINGS"
 	@echo "  test-local   - Test the local agent endpoint with a research TOPIC and RESEARCH_FINDINGS"
 
 install:

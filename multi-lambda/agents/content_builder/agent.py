@@ -16,6 +16,11 @@ async def log_before_agent(
     callback_context: CallbackContext,
 ) -> genai_types.Content | None:
     """Ensure research findings are correctly identified for content generation."""
+    # Strip Authorization from environment to prevent it leaking to Gemini API
+    for key in ["Authorization", "AUTHORIZATION", "HTTP_AUTHORIZATION"]:
+        if key in os.environ:
+            del os.environ[key]
+    
     try:
         logger.info(
             f"Content Builder starting for session: {callback_context.session.id}"

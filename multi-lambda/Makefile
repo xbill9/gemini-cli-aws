@@ -11,7 +11,7 @@ export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install start run run-local restart-local local local-status frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images clean help e2e-test deploy-lambda lambda-status endpoint-lambda destroy-lambda e2e-test-lambda
+.PHONY: install start run run-local restart-local local local-status frontend lint test test-researcher test-judge test-content-builder test-orchestrator researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images build-stack clean help e2e-test deploy-lambda lambda-status endpoint-lambda destroy-lambda e2e-test-lambda
 
 help:
 	@echo "Available commands:"
@@ -27,7 +27,7 @@ help:
 	@echo "  e2e-test              - Run end-to-end test against localhost"
 	@echo "  e2e-test-lambda       - Run end-to-end test against Lambda endpoint"
 	@echo "  lint                  - Run linting checks (ruff)"
-	@echo "  deploy                - Deploy all services to AWS Lambda"
+	@echo "  deploy                - Deploy all services as a stack to AWS Lambda"
 	@echo "  status                - Show Lambda service status"
 	@echo "  endpoint              - Show Lambda service endpoint"
 	@echo "  destroy               - Delete Lambda resources"
@@ -35,6 +35,7 @@ help:
 	@echo "  lambda-status         - Show Lambda service status"
 	@echo "  endpoint-lambda       - Show Lambda service endpoint"
 	@echo "  destroy-lambda        - Delete Lambda resources"
+	@echo "  build-stack           - Build the unified Docker image for all services"
 	@echo "  clean                 - Remove caches and logs"
 
 TEST_URL ?= http://localhost:8000
@@ -60,7 +61,7 @@ e2e-test:
 
 e2e-test-lambda:
 	@echo "Fetching Lambda endpoint..."
-	@ENDPOINT=$$(make endpoint-lambda); \
+	@ENDPOINT=$$(make -s endpoint-lambda); \
 	if [ -z "$$ENDPOINT" ]; then \
 		echo "Error: Lambda endpoint not found. Check if the service is deployed."; \
 		exit 1; \
@@ -125,13 +126,13 @@ agents-local: stop-local
 	@echo "All agents started. Logs: researcher.log, judge.log, content_builder.log, orchestrator.log"
 
 start-local: check-frontend agents-local
-	@echo "Starting App Backend in background..."
+	@echo "Starting Course Builder Gateway in background..."
 	@nohup $(MAKE) backend-local > backend.log 2>&1 &
 	@echo "Starting Frontend dev server in background..."
 	@nohup $(MAKE) frontend-local > frontend.log 2>&1 &
 	@echo "All services started. Logs: researcher.log, judge.log, content_builder.log, orchestrator.log, backend.log, frontend.log"
-	@echo "Frontend: http://localhost:5173"
-	@echo "Backend:  http://localhost:8000"
+	@echo "Frontend Dev: http://localhost:5173"
+	@echo "Gateway:      http://localhost:8000"
 
 stop-local:
 	@echo "Stopping any existing agent and server processes..."
@@ -140,7 +141,7 @@ stop-local:
 	@pkill -9 -f "[v]ite" 2>/dev/null || true
 
 backend-local:
-	@echo "Starting App Backend locally on port 8000..."
+	@echo "Starting Course Builder Gateway locally on port 8000..."
 	@/bin/bash -c "source .env 2>/dev/null || true; \
 	export AGENT_SERVER_URL=http://localhost:8004; \
 	export AGENT_NAME=orchestrator; \
@@ -174,37 +175,36 @@ test-content-builder:
 
 deploy: deploy-lambda
 
+build-stack:
+	docker build -t course-creator-stack:latest .
+
 deploy-lambda:
 	chmod +x lambda/deploy-lambda.sh
 	./lambda/deploy-lambda.sh
 
 destroy-lambda:
 	@echo "Destroying Lambda resources..."
-	aws lambda delete-function --function-name course-creator-app || true
+	aws lambda delete-function --function-name course-creator-course-builder || true
 	aws lambda delete-function --function-name course-creator-orchestrator || true
 	aws lambda delete-function --function-name course-creator-researcher || true
 	aws lambda delete-function --function-name course-creator-judge || true
 	aws lambda delete-function --function-name course-creator-content-builder || true
-	aws ecr delete-repository --repository-name course-creator-app --force || true
-	aws ecr delete-repository --repository-name course-creator-orchestrator --force || true
-	aws ecr delete-repository --repository-name course-creator-researcher --force || true
-	aws ecr delete-repository --repository-name course-creator-judge --force || true
-	aws ecr delete-repository --repository-name course-creator-content-builder --force || true
+	aws ecr delete-repository --repository-name course-creator-stack --force || true
 
 lambda-status:
 	@echo "Course Creator Lambda Status:"
-	@aws lambda get-function --function-name course-creator-app --query 'Configuration.{Name:FunctionName, Status:State, URL:FunctionUrl}' --output table 2>/dev/null || echo "App Lambda not found."
+	@aws lambda get-function --function-name course-creator-course-builder --query 'Configuration.{Name:FunctionName, Status:State, URL:FunctionUrl}' --output table 2>/dev/null || echo "Gateway Lambda not found."
 	@aws lambda get-function --function-name course-creator-orchestrator --query 'Configuration.{Name:FunctionName, Status:State, URL:FunctionUrl}' --output table 2>/dev/null || echo "Orchestrator Lambda not found."
 
 endpoint-lambda:
-	@aws lambda get-function-url-config --function-name course-creator-app --query 'FunctionUrl' --output text 2>/dev/null
+	@aws lambda get-function-url-config --function-name course-creator-course-builder --query 'FunctionUrl' --output text 2>/dev/null
 
 status: lambda-status
 
 local:
 	@echo "--- Local Service URLs ---"
-	@echo "Frontend: http://localhost:5173"
-	@echo "Backend:  http://localhost:8000 (main app)"
+	@echo "Frontend Dev: http://localhost:5173"
+	@echo "Gateway:      http://localhost:8000 (main app)"
 	@echo "Agents:"
 	@echo "  Researcher:      http://localhost:8001"
 	@echo "  Judge:           http://localhost:8002"
@@ -222,16 +222,6 @@ check-local:
 	@ps aux | grep -E "[s]hared[.]adk_app|[m]ain[.]py|[v]ite" || echo "No matching processes found."
 
 endpoint: endpoint-lambda
-
-clean:
-	@echo "Cleaning up caches and temporary files..."
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type d -name ".pytest_cache" -exec rm -rf {} +
-	find . -type d -name ".ruff_cache" -exec rm -rf {} +
-	find . -type d -name ".adk" -exec rm -rf {} +
-	find . -type f -name "*.log" -delete
-	@echo "Clean completed."
-
 
 clean:
 	@echo "Cleaning up caches and temporary files..."

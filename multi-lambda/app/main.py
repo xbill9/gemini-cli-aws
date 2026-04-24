@@ -78,11 +78,16 @@ async def create_session(
     agent_server_origin: str, agent_name: str, user_id: str
 ) -> dict[str, Any]:
     httpx_client = await get_client(agent_server_origin)
+    # Strip Authorization header to prevent it leaking to agents and Gemini API
+    if "authorization" in httpx_client.headers:
+        del httpx_client.headers["authorization"]
     headers = [("Content-Type", "application/json")]
     session_request_url = (
-        f"{agent_server_origin}/apps/{agent_name}/users/{user_id}/sessions"
+        f"{agent_server_origin.rstrip('/')}/apps/{agent_name}/users/{user_id}/sessions"
     )
-    session_response = await httpx_client.post(session_request_url, headers=headers)
+    session_response = await httpx_client.post(
+        session_request_url, headers=headers, json={}
+    )
     session_response.raise_for_status()
     return session_response.json()
 
@@ -91,9 +96,12 @@ async def get_session(
     agent_server_origin: str, agent_name: str, user_id: str, session_id: str
 ) -> dict[str, Any] | None:
     httpx_client = await get_client(agent_server_origin)
+    # Strip Authorization header to prevent it leaking to agents and Gemini API
+    if "authorization" in httpx_client.headers:
+        del httpx_client.headers["authorization"]
     headers = [("Content-Type", "application/json")]
     session_request_url = (
-        f"{agent_server_origin}/apps/{agent_name}/users/{user_id}/sessions/{session_id}"
+        f"{agent_server_origin.rstrip('/')}/apps/{agent_name}/users/{user_id}/sessions/{session_id}"
     )
     session_response = await httpx_client.get(session_request_url, headers=headers)
     if session_response.status_code == 404:
@@ -104,8 +112,11 @@ async def get_session(
 
 async def list_agents(agent_server_origin: str) -> list[str]:
     httpx_client = await get_client(agent_server_origin)
+    # Strip Authorization header to prevent it leaking to agents and Gemini API
+    if "authorization" in httpx_client.headers:
+        del httpx_client.headers["authorization"]
     headers = [("Content-Type", "application/json")]
-    list_url = f"{agent_server_origin}/list-apps"
+    list_url = f"{agent_server_origin.rstrip('/')}/list-apps"
     list_response = await httpx_client.get(list_url, headers=headers)
     list_response.raise_for_status()
     agent_list = list_response.json()
@@ -122,6 +133,10 @@ async def query_adk_server(
     session_id: str,
 ) -> AsyncGenerator[dict[str, Any]]:
     httpx_client = await get_client(agent_server_origin)
+    # Ensure no Authorization header is present in the client's defaults
+    if "authorization" in httpx_client.headers:
+        del httpx_client.headers["authorization"]
+    
     request = {
         "appName": agent_name,
         "userId": user_id,
@@ -129,12 +144,13 @@ async def query_adk_server(
         "newMessage": {"role": "user", "parts": [{"text": message}]},
         "streaming": True,
     }
+    server_origin = agent_server_origin.rstrip('/')
     logger.info(
-        f"Connecting to ADK server: {agent_server_origin}/run_sse with streaming=True"
+        f"Connecting to ADK server: {server_origin}/run_sse with streaming=True"
     )
     try:
         async with aconnect_sse(
-            httpx_client, "POST", f"{agent_server_origin}/run_sse", json=request
+            httpx_client, "POST", f"{server_origin}/run_sse", json=request
         ) as event_source:
             if event_source.response.status_code != 200:
                 await event_source.response.aread()

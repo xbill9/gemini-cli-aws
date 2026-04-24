@@ -15,7 +15,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install run start stop lint format test deploy clean a2a test-invoke test-local endpoint status check-env
+.PHONY: help install run start stop lint format test clean a2a test-local status check-env
 
 check-env:
 	@if [ -z "$(GOOGLE_API_KEY)" ]; then \
@@ -29,16 +29,13 @@ help:
 	@echo "  run          - Run the agent locally on port $(PORT)"
 	@echo "  start        - Start the agent in background"
 	@echo "  stop         - Stop the local agent"
-	@echo "  status       - Check local and remote service status"
+	@echo "  status       - Check local service status"
 	@echo "  lint         - Run linting (ruff)"
 	@echo "  format       - Run formatting (ruff format)"
 	@echo "  test         - Run tests (pytest)"
 	@echo "  a2a          - Fetch the A2A Agent Card"
-	@echo "  test-invoke  - Test the agent endpoint with a research TOPIC (prefers Cloud Run if deployed)"
 	@echo "  test-local   - Test the local agent endpoint with a research TOPIC"
 	@echo "  clean        - Remove temporary files and cache"
-	@echo "  deploy       - Deploy to Google Cloud Run"
-	@echo "  endpoint     - Get the deployed service URL"
 
 install:
 	$(PIP) install -e .
