@@ -67,7 +67,8 @@ The `Makefile` is the primary interface for development and deployment tasks:
     - `make format`: Run black.
     - `make type-check`: Run mypy.
 - **Cleanup:**
-    - `make aws-destroy`: Destroys both Lightsail container and instance resources.
+    - `make destroy`: Destroys all AWS resources (both Lightsail container and instance).
+    - `make aws-destroy`: Alias for `make destroy`.
     - `make instance-destroy`: Destroys only the Lightsail instance and local key file.
 
 ## Deployment Environment
@@ -75,16 +76,16 @@ The `Makefile` is the primary interface for development and deployment tasks:
 The project is primarily configured for deployment to **Amazon Lightsail Managed Instances (VPS)**, but also supports **Amazon Lightsail Container Services**.
 
 ### Managed Instance (VPS) Deployment
-This method runs the Python MCP server directly on an Amazon Linux 2023 instance as a `systemd` service.
+This method runs the Python MCP server directly on an Amazon Lightsail instance as a `systemd` service.
 
-- **Blueprint:** Amazon Linux 2023
+- **Blueprint:** Debian 13 (Default)
 - **Bundle:** Nano (0.5 GB RAM, 1 vCPU)
 - **Port:** 8080 (HTTP)
 - **Service Management:** `systemd` (service name: `mcp-server`)
+- **Default SSH User:** `admin` (for Debian)
 
 ### Container Service Deployment (Alternative)
-The project can also be deployed to Lightsail Container Services using the provided `Dockerfile`.
-
+The project can also be deployed to Lightsail Container Services using the provided `Dockerfile`. Use `make lightsail` for this path.
 ### Prerequisites
 - AWS CLI installed and configured.
 - `lightsailctl` plugin installed.

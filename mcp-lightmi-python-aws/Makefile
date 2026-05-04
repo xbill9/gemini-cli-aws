@@ -17,7 +17,7 @@ BUNDLE_ID ?= nano_3_0
 KEY_PAIR_NAME ?= mcp-vps-key
 SSH_USER ?= admin
 
-.PHONY: all install run build test lint format type-check status git-status lightsail-status instance-status endpoint pull push clean deploy docker-build push-lightsail create-deployment aws-destroy instance-deploy instance-create instance-setup-fw instance-sync instance-destroy
+.PHONY: all install run build test lint format type-check status git-status lightsail-status instance-status endpoint pull push clean deploy docker-build push-lightsail create-deployment destroy aws-destroy instance-deploy instance-create instance-setup-fw instance-sync instance-destroy container-destroy
 
 # Target to show both git, Container and Instance status
 status: lightsail-status instance-status
@@ -160,6 +160,8 @@ instance-sync:
 		 sudo systemctl restart mcp-server && \
 		 sudo systemctl status mcp-server --no-pager"
 	@rm mcp-server.tar.gz
+
+destroy: aws-destroy
 
 aws-destroy: instance-destroy container-destroy
 
