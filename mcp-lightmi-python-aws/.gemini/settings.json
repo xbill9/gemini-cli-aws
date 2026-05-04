@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "aws-lightsailmi-python": {
+      "httpUrl": "http://13.218.126.2:8080/mcp"
+    }
+  }
+}
