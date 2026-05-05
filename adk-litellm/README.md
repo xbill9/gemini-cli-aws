@@ -1,69 +1,39 @@
-# TPU vLLM DevOps Agent (MCP Server)
+# Multi-Cloud DevOps Agent (MCP & ADK)
 
 ## Role
-This project functions as an expert TPU SRE and DevOps Engineer, specialized in the **Gemma 4** ecosystem. Its primary goal is to manage the self-hosted inference stack and leverage it for infrastructure analysis.
+This project functions as an expert TPU and AWS SRE/DevOps Engineer, specialized in the **Gemma 4** ecosystem and **Amazon Bedrock**. Its primary goal is to manage self-hosted and managed inference stacks and leverage them for infrastructure analysis.
 
-This project provides an automated DevOps/SRE assistant that leverages **Gemma 4 models self-hosted via vLLM on Cloud TPUs**. It bridges Google Cloud Logging with a private inference endpoint to analyze infrastructure issues and suggest remediations.
+This project provides an automated DevOps/SRE assistant that leverages:
+1.  **Gemma 4 models** self-hosted via vLLM on Cloud TPUs.
+2.  **Amazon Bedrock (Nova)** via the Agent Developer Kit (ADK).
+
+It bridges Google Cloud Logging and AWS CloudWatch with inference endpoints to analyze infrastructure issues and suggest remediations.
 
 ## 🟢 Current Status: ONLINE
-The Gemma 4 inference stack is currently deployed and active on TPU v6e-8.
-*   **Active Endpoint:** `http://YOUR_TPU_IP_ADDRESS:8000`
-*   **Model:** `google/gemma-4-31B-it`
+- **GCP Stack:** The Gemma 4 inference stack is currently deployed and active on TPU v6e-8.
+    *   **Active Endpoint:** `http://YOUR_TPU_IP_ADDRESS:8000`
+- **AWS Stack:** Bedrock agents are ready for deployment using the Nova model series.
 
-## 🚀 Deployment Requirements
+## 🚀 Deployment Options
 
-To deploy and run this project, you need to address two main components: the **Inference Stack** (vLLM on TPU v6e) and the **MCP Server** itself.
-
-### 1. Infrastructure Requirements (The Inference Stack)
+### 1. GCP Inference Stack (The Inference Stack)
 The MCP server expects a running vLLM instance. Your TPU deployment for the model needs:
 *   **Hardware:** Cloud TPU v6e (Trillium) with topology `2x4` (8 chips).
-*   **Software:** `vllm/vllm-tpu:nightly` specialized container (v0.19.2+ recommended for Gemma 4 fixes).
+*   **Software:** `vllm/vllm-tpu:nightly` specialized container.
 *   **Model:** `google/gemma-4-31B-it` (Hugging Face ID).
 *   **Runtime:** `v2-alpha-tpuv6e` for Flex-start / Queued Resources.
-*   **Networking:** Private Google Access must be enabled for internal connectivity, or direct internet access for Hugging Face downloads.
 
-### 2. Software & API Dependencies
-The agent relies on several Google Cloud services and Python libraries:
-*   **Libraries:** `mcp`, `fastmcp`, `google-cloud-logging`, `google-cloud-secret-manager`, `openai`, and `httpx`.
-*   **Permissions:** The service account running the agent needs:
-    *   `logging.logEntries.list` (to read logs).
-    *   `tpu.nodes.get` and `tpu.nodes.list` (for discovery).
-    *   `secretmanager.versions.access` (for Hugging Face tokens).
-
-### 3. Environment Variables
-You can configure the following variables for the MCP server:
-*   `GOOGLE_CLOUD_PROJECT`: Your GCP Project ID (defaults to `aisprint-491218`).
-*   `MODEL_NAME`: The model identifier used by vLLM (defaults to `google/gemma-4-31B-it`).
-
-## Technical Standards
--   **vLLM API:** OpenAI-compatible endpoint at `/v1/chat/completions`.
--   **Optimization Flags:**
-    -   `--tensor-parallel-size 8`
-    -   `--max-model-len 16384`
-    -   `--disable_chunked_mm_input`
-    -   `--max_num_batched_tokens 4096` (required for multimodal compatibility)
-    -   `--limit-mm-per-prompt '{"image":4,"audio":1}'` (JSON format required in nightly)
--   **Tooling:** Enable `--enable-auto-tool-choice`, `--tool-call-parser gemma4`, and `--reasoning-parser gemma4`.
-
-## Flex-start VMs
-Our stack leverages **Flex-start VMs** (via the `v2-alpha-tpuv6e` runtime) to maximize TPU availability and minimize costs.
-
-### Key Characteristics
-*   **Dynamic Workload Scheduler (DWS):** Provisions resources from a secure pool, increasing the probability of securing high-demand TPU v6e chips.
-*   **Wait-Time Mechanism:** Requests can wait up to 2 hours for resources if capacity is full.
-*   **Execution Limit:** VMs have a maximum run duration of **7 days**, requiring `maxRunDuration` and a termination action.
-*   **Dense Placement:** TPU nodes are placed in close physical proximity to minimize network latency.
-*   **Cost Efficiency:** Offers discounted pricing for vCPUs, memory, and TPU accelerators.
-
-### Constraints
-*   **No Live Migration:** Flex-start VMs do not support live migration.
-*   **Quota Requirements:** Requires sufficient **preemptible quota**.
-*   **No Reservations:** These instances **cannot** consume existing TPU reservations.
+### 2. AWS Managed Stack (ADK on Lightsail)
+For a low-latency, managed experience on AWS:
+*   **Model:** `amazon.nova-micro-v1:0` via Bedrock.
+*   **Deployment:** AWS Lightsail for Containers.
+*   **Guide:** See [agents/LIGHTSAIL.md](agents/LIGHTSAIL.md) for step-by-step instructions.
 
 ## 🛠 Usage & Setup
 
-### Step 1: Turnkey Deployment to TPU
-Use the `orchestrate_gemma4_stack` tool within the MCP server for a seamless setup, or use the `gcloud` command generated by `get_vllm_deployment_config`.
+### Step 1: Infrastructure Deployment
+- **GCP TPU:** Use the `orchestrate_gemma4_stack` tool within the MCP server.
+- **AWS Bedrock:** Use the ADK to deploy to Lightsail (see `agents/LIGHTSAIL.md`).
 
 ### Step 2: Run the MCP Server
 Install dependencies and run the server locally:

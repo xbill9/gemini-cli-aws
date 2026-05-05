@@ -3,13 +3,19 @@
 This document provides context for the Gemini Code Assistant to understand the project and assist in development. It contains information relevant to the Gemini CLI's operation and interaction with this project, including specific setup instructions for integrating with the CLI.
 
 ## Role
-This project functions as an expert TPU SRE and DevOps Engineer, specialized in the **Gemma 4** ecosystem. Its primary goal is to manage the self-hosted inference stack and leverage it for infrastructure analysis.
+This project functions as an expert TPU and AWS SRE/DevOps Engineer, specialized in the **Gemma 4** ecosystem and **Amazon Bedrock**. Its primary goal is to manage self-hosted inference stacks (Gemma 4 via vLLM) and managed cloud AI services (Bedrock), leveraging them for infrastructure analysis across GCP and AWS.
 
-This project provides an automated DevOps/SRE assistant that leverages **Gemma 4 models self-hosted via vLLM on Cloud TPUs**. It bridges Google Cloud Logging with a private inference endpoint to analyze infrastructure issues and suggest remediations.
+This project provides an automated DevOps/SRE assistant that leverages:
+1.  **Gemma 4 models** self-hosted via vLLM on Cloud TPUs.
+2.  **Amazon Bedrock (Nova)** via the Agent Developer Kit (ADK).
+
+It bridges cloud logging (GCP Cloud Logging / AWS CloudWatch) with private or managed inference endpoints to analyze infrastructure issues and suggest remediations.
 
 ## 🟢 Current Status: ONLINE
-The Gemma 4 inference stack is currently deployed and active on TPU v6e-8.
-*   **Active Endpoint:** `http://YOUR_TPU_IP_ADDRESS:8000`
+- **GCP Stack:** Gemma 4 inference stack is currently deployed and active on TPU v6e-8.
+    *   **Active Endpoint:** `http://YOUR_TPU_IP_ADDRESS:8000`
+- **AWS Stack:** Bedrock agents are ready for deployment via ADK.
+    *   **Supported Models:** `amazon.nova-micro-v1:0`, `amazon.nova-lite-v1:0`
 
 vLLM recipes
 * https://github.com/AI-Hypercomputer/tpu-recipes/blob/main/inference/trillium/vLLM/Gemma4/README.md
@@ -21,119 +27,66 @@ never destroy the queued resource without explicit asking for it
 
 ## 🚀 Deployment Requirements
 
-To deploy and run this project, you need to address two main components: the **Inference Stack** (vLLM on TPU v6e) and the **MCP Server** itself.
-
-### 1. Infrastructure Requirements (The Inference Stack)
-The MCP server expects a running vLLM instance. Your TPU deployment for the model needs:
+### 1. GCP Inference Stack (Gemma 4 on TPU)
 *   **Hardware:** Cloud TPU v6e (Trillium) 
-*   **Software:** `vllm/vllm-tpu:nightly` specialized container (v0.19.2+ recommended for Gemma 4 fixes).
-*   **Model:** `google/gemma-4-31B-it` (Hugging Face ID).
-*   **Runtime:** `v2-alpha-tpuv6e` for Flex-start / Queued Resources.
-*   **Networking:** Private Google Access must be enabled for internal connectivity, or direct internet access for Hugging Face downloads.
+*   **Software:** `vllm/vllm-tpu:nightly`
+*   **Model:** `google/gemma-4-31B-it`
 
-### 2. Software & API Dependencies
-The agent relies on several Google Cloud services and Python libraries:
-*   **Libraries:** `mcp`, `fastmcp`, `google-cloud-logging`, `google-cloud-secret-manager`, `openai`, and `httpx`.
-*   **Permissions:** The service account running the agent needs:
-    *   `logging.logEntries.list` (to read logs).
-    *   `tpu.nodes.get` and `tpu.nodes.list` (for discovery).
-    *   `secretmanager.versions.access` (for Hugging Face tokens).
+### 2. AWS Managed Stack (Bedrock & Lightsail)
+*   **Provider:** Amazon Bedrock (Model access enabled for Nova models).
+*   **Deployment Target:** AWS Lightsail for Containers.
+*   **Tools:** AWS CLI, Lightsail Control Plugin.
+*   **Permissions:** `AmazonBedrockFullAccess`, `AmazonLightsailFullAccess`.
 
-### 3. Environment Variables
-You can configure the following variables for the MCP server:
-*   `GOOGLE_CLOUD_PROJECT`: Your GCP Project ID (defaults to `aisprint-491218`).
-*   `MODEL_NAME`: The model identifier used by vLLM (defaults to `google/gemma-4-31B-it`).
-
-## Technical Standards
--   **vLLM API:** OpenAI-compatible endpoint at `/v1/chat/completions`.
--   **Optimization Flags:**
-    -   `--tensor-parallel-size 8`
-    -   `--max-model-len 16384`
-    -   `--disable_chunked_mm_input`
-    -   `--max_num_batched_tokens 4096` (required for multimodal compatibility)
-    -   `--limit-mm-per-prompt '{"image":4,"audio":1}'` (JSON format required in nightly)
--   **Tooling:** Enable `--enable-auto-tool-choice`, `--tool-call-parser gemma4`, and `--reasoning-parser gemma4`.
--   **Image:** `vllm/vllm-tpu:nightly` (v0.19.2+ recommended) is preferred for stable Gemma 4 support.
-
-## Flex-start VMs
-Our stack leverages **Flex-start VMs** (via the `v2-alpha-tpuv6e` runtime) to maximize TPU availability and minimize costs.
-
-### Key Characteristics
-*   **Dynamic Workload Scheduler (DWS):** Provisions resources from a secure pool, increasing the probability of securing high-demand TPU v6e chips.
-*   **Wait-Time Mechanism:** Requests can wait up to 2 hours for resources if capacity is full.
-*   **Execution Limit:** VMs have a maximum run duration of **7 days**, requiring `maxRunDuration` and a termination action.
-*   **Dense Placement:** TPU nodes are placed in close physical proximity to minimize network latency.
-*   **Cost Efficiency:** Offers discounted pricing for vCPUs, memory, and TPU accelerators.
-
-### Constraints
-*   **No Live Migration:** Flex-start VMs do not support live migration.
-*   **Quota Requirements:** Requires sufficient **preemptible quota**.
-*   **No Reservations:** These instances **cannot** consume existing TPU reservations.
+### 3. Software & API Dependencies
+*   **Libraries:** `mcp`, `fastmcp`, `google-cloud-logging`, `google-adk`, `litellm`.
+*   **Environment Variables:**
+    *   `GOOGLE_CLOUD_PROJECT`: Your GCP Project ID.
+    *   `AWS_REGION`: Your AWS Region (e.g., `us-east-1`).
+    *   `BEDROCK_MODEL`: (Optional) Bedrock model ID.
 
 ## 🛠 Usage & Setup
 
-### Step 1: Turnkey Deployment to TPU
-Use the `orchestrate_gemma4_stack` tool within the MCP server for a seamless setup, or use the `gcloud` command generated by `get_vllm_deployment_config`.
+### Step 1: Deploy Inference Stack
+- **GCP:** Use `orchestrate_gemma4_stack` in the MCP server.
+- **AWS:** Follow the guide in `agents/LIGHTSAIL.md` to deploy the Bedrock agent.
 
-### Step 2: Run the MCP Server
-Install dependencies and run the server locally:
-```bash
-make install
-make run
-```
+### Step 2: LiteLLM Proxy Setup
+To enable seamless integration with the Gemini CLI for both TPU and Bedrock:
 
-### Step 3: LiteLLM Proxy Setup
-To enable seamless integration with the Gemini CLI, you can set up a LiteLLM proxy to route requests to your self-hosted vLLM endpoint on TPU.
-
-#### 1. Install LiteLLM Proxy
-You need the [proxy] version of LiteLLM to handle the translation:
-```bash
-pip install 'litellm[proxy]'
-```
-
-#### 2. Create a configuration file (`litellm_config.yaml`)
-Create this file to map the Gemini model names used by the CLI to your TPU endpoint:
+#### 1. Create `litellm_config.yaml`
 ```yaml
 model_list:
   - model_name: "gemma4-tpu"
     litellm_params:
-      model: "openai/google/gemma-4-31B-it" # Tell LiteLLM it's an OpenAI-style endpoint
-      api_base: "http://YOUR_TPU_IP_ADDRESS:8000/v1" # Your TPU IP
-      api_key: "none" # vLLM doesn't require a key by default
+      model: "openai/google/gemma-4-31B-it"
+      api_base: "http://YOUR_TPU_IP_ADDRESS:8000/v1"
+      api_key: "none"
+
+  - model_name: "bedrock-nova"
+    litellm_params:
+      model: "bedrock/amazon.nova-micro-v1:0"
+      aws_region_name: "us-east-1"
+
     router_settings:
       model_group_alias:
-        # Map common Gemini model names to your TPU-hosted Gemma 4
         "gemini-2.0-flash": "gemma4-tpu"
-        "gemini-2.0-flash-lite": "gemma4-tpu"
+        "gemini-2.0-flash-lite": "bedrock-nova" # Map flash-lite to Bedrock for efficiency
         "gemini-1.5-flash": "gemma4-tpu"
         "gemini-1.5-pro": "gemma4-tpu"
 ```
-*Note: The IP `35.222.239.170` matches the Active Deployment in this workspace.*
 
-#### 3. Start the LiteLLM Proxy
-Run this in a separate terminal (or in the background):
+#### 2. Start the LiteLLM Proxy
 ```bash
 litellm --config litellm_config.yaml --port 4000
 ```
 
-#### 4. Configure Gemini CLI to use the Proxy
-Set these environment variables in your shell (e.g., in `~/.bashrc` or `~/.zshrc`) to make it permanent:
+#### 3. Configure Gemini CLI
 ```bash
-# Point the CLI to your local LiteLLM proxy
 export GOOGLE_GEMINI_BASE_URL="http://localhost:4000"
-
-# Set the default model globally
-export GEMINI_MODEL="google/gemma-4-31B-it"
-
-# The CLI requires a key even if the proxy ignores it
+export GEMINI_MODEL="google/gemma-4-31B-it" # or "bedrock-nova"
 export GEMINI_API_KEY="local-proxy-token"
 ```
-
-**Why this works:**
-*   **API Translation:** When you run `gemini "Hello"`, the CLI sends a request to `localhost:4000` in Google format. LiteLLM translates this to the OpenAI format and forwards it to your TPU.
-*   **Tool Calling Compatibility:** Because we deployed your Gemma 4 stack with `--tool-call-parser gemma4`, the model's reasoning and tool outputs will be perfectly understood by the Gemini CLI when it tries to run shell commands or edit files.
-
-Now, every time you run `gemini`, it will be powered by your private TPU v6e cluster.
 
 ## 🛠 Available Tools
 
