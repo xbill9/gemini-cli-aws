@@ -1,0 +1,9 @@
+model_list:
+  - model_name: "bedrock-nova"
+    litellm_params:
+      model: "bedrock/amazon.nova-micro-v1:0"
+
+    router_settings:
+      model_group_alias:
+        "nova-bedrock": "bedrock-nova"
+        "default": "bedrock-nova"
