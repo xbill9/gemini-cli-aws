@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "mcp-lambdami-python-aws": {
+      "httpUrl": "https://3x10n3uguc.execute-api.us-east-1.amazonaws.com/mcp/"
+    }
+  }
+}
