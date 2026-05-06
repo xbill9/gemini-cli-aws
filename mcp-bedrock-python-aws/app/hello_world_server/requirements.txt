@@ -1,0 +1,10 @@
+mcp >= 1.2.0
+pydantic
+uvicorn
+starlette
+sse-starlette
+flake8
+black
+mypy
+pytest
+httpx

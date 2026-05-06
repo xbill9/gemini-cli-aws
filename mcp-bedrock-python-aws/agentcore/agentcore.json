@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "McpBedrockPythonAws",
+  "version": 1,
+  "managedBy": "CDK",
+  "tags": {
+    "agentcore:project-name": "McpBedrockPythonAws"
+  },
+  "runtimes": [],
+  "memories": [],
+  "credentials": [],
+  "evaluators": [],
+  "onlineEvalConfigs": [],
+  "agentCoreGateways": [
+    {
+      "name": "hello-world-gateway",
+      "targets": [
+        {
+          "name": "hello-world-target",
+          "targetType": "mcpServer",
+          "toolDefinitions": [
+            {
+              "name": "greet",
+              "description": "Echo the input parameter.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "param": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "param"
+                ]
+              }
+            }
+          ],
+          "compute": {
+            "host": "AgentCoreRuntime",
+            "implementation": {
+              "language": "Python",
+              "path": "app/hello_world_server/main.py",
+              "handler": "main:mcp"
+            },
+            "runtime": {
+              "artifact": "CodeZip",
+              "pythonVersion": "PYTHON_3_12",
+              "name": "hello_world_server",
+              "entrypoint": "main.py",
+              "codeLocation": "app/hello_world_server/",
+              "instrumentation": {
+                "enableOtel": false
+              }
+            }
+          }
+        }
+      ],
+      "authorizerType": "NONE",
+      "enableSemanticSearch": true,
+      "exceptionLevel": "NONE"
+    }
+  ],
+  "policyEngines": [],
+  "configBundles": [],
+  "abTests": [],
+  "httpGateways": []
+}

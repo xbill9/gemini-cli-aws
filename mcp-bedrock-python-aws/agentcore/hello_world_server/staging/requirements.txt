@@ -1,0 +1,11 @@
+mcp >= 1.2.0
+pydantic
+python-json-logger
+uvicorn
+starlette
+sse-starlette
+flake8
+black
+mypy
+pytest
+httpx
