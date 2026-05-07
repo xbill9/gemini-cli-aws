@@ -17,29 +17,28 @@ Tags defined in `agentcore.json` flow through to deployed CloudFormation resourc
 1. **Schema-First Authority:** The `.json` files are the source of truth. Do not modify agent behavior by editing
    generated CDK code in `cdk/`.
 2. **Resource Identity:** The `name` field determines the CloudFormation Logical ID.
-   - **Renaming** a resource will **destroy and recreate** it.
-   - **Modifying** other fields will update the resource **in-place**.
-3. **Schema Validation:** If your JSON conforms to the types in `.llm-context/`, it will deploy successfully. Run
+3. **No Local Venv:** **Mandatory Rule:** Never setup a venv environment. The project uses global/container environments as managed by AgentCore Runtime.
+4. **Schema Validation:** If your JSON conforms to the types in `.llm-context/`, it will deploy successfully. Run
    `agentcore validate` to check.
-4. **Resource Removal:** Use `agentcore remove` to remove resources. Run `agentcore deploy` after removal to tear down
+5. **Resource Removal:** Use `agentcore remove` to remove resources. Run `agentcore deploy` after removal to tear down
    deployed infrastructure.
 
 ## Directory Structure
 
 ```
-myProject/
+mcp-bedrock-python-aws/
 ├── AGENTS.md               # This file — AI coding assistant context
+├── GEMINI.md               # Repo-specific architecture and mandates
+├── Makefile                # Automation for dev, test, and deploy
+├── save-aws-creds.sh       # Utility to export AWS credentials for Makefile
 ├── agentcore/
 │   ├── agentcore.json      # Main project config (AgentCoreProjectSpec)
 │   ├── aws-targets.json    # Deployment targets (account + region)
-│   ├── .env.local          # Secrets — API keys (gitignored)
 │   ├── .llm-context/       # TypeScript type definitions for AI assistants
-│   │   ├── README.md       # Guide to using schema files
-│   │   ├── agentcore.ts    # AgentCoreProjectSpec types
-│   │   ├── aws-targets.ts  # AWS deployment target types
-│   │   └── mcp.ts          # Gateway and MCP tool types
 │   └── cdk/                # AWS CDK project (@aws/agentcore-cdk L3 constructs)
-├── app/                    # Agent application code
+├── app/
+│   ├── hello_world_server/ # Tool Provider (Python FastMCP)
+│   └── testagent/          # Tool Consumer (Strands Agent)
 └── evaluators/             # Custom evaluator code (if any)
 ```
 

@@ -1,4 +1,4 @@
-# main.py
+# server.py
 
 import logging
 import sys
@@ -38,7 +38,10 @@ async def health_check(request):
 @mcp.tool()
 def greet(param: str) -> str:
     """
-    Get a greeting from the MCP server.
+    Echoes the input parameter back as a greeting.
+
+    Args:
+        param: The name or message to be echoed by the server.
     """
     logger.info(f"Executed greet tool with param: {param}")
     # FastMCP automatically wraps the return value in TextContent

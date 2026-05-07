@@ -8,7 +8,7 @@ commands like `deploy`, `dev`, and `invoke` rely on the configuration stored her
 
 ## Agent Root
 
-The main entrypoint to your app is defined in `main.py`. Using the AgentCore SDK `@app.entrypoint` decorator, this
+The main entrypoint to your app is defined in `agent.py`. Using the AgentCore SDK `@app.entrypoint` decorator, this
 file defines a Starlette ASGI app with the chosen Agent framework SDK running within.
 
 `model/load.py` instantiates your chosen model provider.
@@ -21,11 +21,11 @@ file defines a Starlette ASGI app with the chosen Agent framework SDK running wi
 
 # Developing locally
 
-If installation was successful, a virtual environment is already created with dependencies installed.
+Dependencies should be installed via the root `Makefile` (`make install`).
 
-Run `source .venv/bin/activate` before developing.
+**Important:** Do not create or use a local virtual environment (`.venv`). This project is designed to run in managed container/lambda environments provided by AgentCore Runtime.
 
-`agentcore dev` will start a local server on 0.0.0.0:8080.
+`agentcore dev` will start a local server on 0.0.0.0:8080 with hot-reload enabled.
 
 In a new terminal, you can invoke that server with:
 

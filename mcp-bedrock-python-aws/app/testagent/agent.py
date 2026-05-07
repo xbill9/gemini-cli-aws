@@ -1,9 +1,10 @@
 from typing import Any
-
+from pydantic import BaseModel
 from strands import Agent, tool
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from model.load import load_model
 from mcp_client.client import get_all_gateway_mcp_clients
+
 
 app = BedrockAgentCoreApp()
 log = app.logger
@@ -16,14 +17,23 @@ You are a helpful assistant. Use tools when appropriate.
 """
 
 
+class AgentRequest(BaseModel):
+    """Input payload for the agent."""
+
+    prompt: str
+
+
 # Define a collection of tools used by the model
-tools = []
+tools: list[Any] = []
+
 
 # Define a simple function tool
 @tool
 def add_numbers(a: int, b: int) -> int:
     """Return the sum of two numbers"""
-    return a+b
+    return a + b
+
+
 tools.append(add_numbers)
 
 
@@ -35,25 +45,33 @@ for mcp_client in mcp_clients:
 
 _agent = None
 
+
 def get_or_create_agent():
     global _agent
     if _agent is None:
         _agent = Agent(
             model=load_model(),
             system_prompt=DEFAULT_SYSTEM_PROMPT,
-            tools=tools
+            tools=tools,
         )
     return _agent
 
 
 @app.entrypoint
-async def invoke(payload, context):
+async def invoke(payload: dict[str, Any], context: Any):
     log.info("Invoking Agent.....")
+
+    try:
+        request = AgentRequest(**payload)
+    except Exception as e:
+        log.error(f"Invalid payload: {e}")
+        yield f"Error: Invalid payload. {e}"
+        return
 
     agent = get_or_create_agent()
 
     # Execute and format response
-    stream = agent.stream_async(payload.get("prompt"))
+    stream = agent.stream_async(request.prompt)
 
     async for event in stream:
         # Handle Text parts of the response

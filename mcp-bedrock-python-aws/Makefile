@@ -12,7 +12,7 @@ AWS_ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output t
 # Default target
 all: install lint format type-check test
 
-.PHONY: all install run build test lint format type-check status git-status pull push clean deploy agentcore-deploy agentcore-dev agentcore-status agentcore-logs
+.PHONY: all install run build test lint format type-check status git-status pull push clean deploy agentcore-deploy agentcore-dev agentcore-status agentcore-logs endpoint
 
 # Installation and Execution
 install:
@@ -23,27 +23,39 @@ install:
 
 run:
 	@echo "Running the server locally..."
-	cd app/hello_world_server && python main.py
+	cd app/hello_world_server && python server.py
 
 # Code Quality and Testing
 lint:
 	@echo "Running linting (flake8)..."
-	flake8 app/hello_world_server app/testagent --exclude .venv
+	python -m flake8 app/hello_world_server app/testagent --exclude .venv
 
 format:
 	@echo "Formatting code (black)..."
-	black app/hello_world_server app/testagent
+	python -m black app/hello_world_server app/testagent
 
 type-check:
 	@echo "Running type checking (mypy)..."
-	PYTHONPATH=app/hello_world_server:app/testagent mypy app/hello_world_server app/testagent
+	PYTHONPATH=app/hello_world_server python -m mypy app/hello_world_server
+	PYTHONPATH=app/testagent python -m mypy app/testagent
 
 test:
 	@echo "Running tests (pytest)..."
-	PYTHONPATH=app/hello_world_server:app/testagent pytest app/hello_world_server app/testagent
+	PYTHONPATH=app/hello_world_server:app/testagent python -m pytest app/hello_world_server app/testagent
 
 # AgentCore Commands
 deploy: agentcore-deploy
+
+PROJECT_NAME ?= $(shell jq -r .name agentcore/agentcore.json 2>/dev/null)
+TARGET_NAME ?= default
+STACK_NAME ?= AgentCore-$(PROJECT_NAME)-$(TARGET_NAME)
+
+endpoint:
+	@echo "Retrieving gateway endpoints..."
+	@aws cloudformation describe-stacks \
+		--stack-name $(STACK_NAME) \
+		--query "Stacks[0].Outputs[?ends_with(OutputKey, 'UrlOutput')].OutputValue" \
+		--output text
 
 agentcore-deploy:
 	@echo "Deploying to AgentCore..."

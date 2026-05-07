@@ -31,7 +31,12 @@ Both components are optimized for serverless execution using AgentCore Runtime a
 ## Installation
 
 1.  **Clone the repository.**
-2.  **Install dependencies:**
+2.  **Authenticate with AWS:**
+    Ensure your AWS CLI is configured. To enable the Makefile to use your current session:
+    ```bash
+    ./save-aws-creds.sh
+    ```
+3.  **Install dependencies:**
     ```bash
     make install
     ```
@@ -65,6 +70,10 @@ make deploy
     ```bash
     make status
     ```
+- **Endpoints:** Retrieve the deployed gateway URL:
+    ```bash
+    make endpoint
+    ```
 - **Logs:** Stream logs from the deployed runtime:
     ```bash
     make agentcore-logs
@@ -85,10 +94,14 @@ make deploy
 ### MCP Tools (Provided by `hello_world_server`)
 - **`greet`**: Get a greeting from the MCP server.
     - **Parameters:** `param` (string).
+- **`/health`**: Custom HTTP route for service health checks.
 
 ### Agent (Provided by `testagent`)
 - **Framework:** Strands
 - **Capability:** Dynamically discovers and invokes tools from the AgentCore Gateway.
+- **Local Tools:**
+    - **`add_numbers`**: A sample local tool that adds two integers.
+- **Runtime:** Managed by `BedrockAgentCoreApp`.
 
 ## Cleanup
 To remove local build artifacts:

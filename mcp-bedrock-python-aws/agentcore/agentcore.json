@@ -6,7 +6,18 @@
   "tags": {
     "agentcore:project-name": "McpBedrockPythonAws"
   },
-  "runtimes": [],
+  "runtimes": [
+    {
+      "name": "test-agent",
+      "build": "CodeZip",
+      "entrypoint": "agent.py",
+      "codeLocation": "app/testagent/",
+      "runtimeVersion": "PYTHON_3_12",
+      "instrumentation": {
+        "enableOtel": true
+      }
+    }
+  ],
   "memories": [],
   "credentials": [],
   "evaluators": [],
@@ -39,17 +50,17 @@
             "host": "AgentCoreRuntime",
             "implementation": {
               "language": "Python",
-              "path": "app/hello_world_server/main.py",
-              "handler": "main:mcp"
+              "path": "app/hello_world_server/server.py",
+              "handler": "server:mcp"
             },
             "runtime": {
               "artifact": "CodeZip",
               "pythonVersion": "PYTHON_3_12",
               "name": "hello_world_server",
-              "entrypoint": "main.py",
+              "entrypoint": "server.py",
               "codeLocation": "app/hello_world_server/",
               "instrumentation": {
-                "enableOtel": false
+                "enableOtel": true
               }
             }
           }

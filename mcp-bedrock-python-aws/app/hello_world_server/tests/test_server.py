@@ -1,5 +1,5 @@
 from starlette.testclient import TestClient
-from main import mcp, greet
+from server import mcp, greet
 
 # FastMCP in the mcp SDK exposes the Starlette app via streamable_http_app()
 client = TestClient(mcp.streamable_http_app())
