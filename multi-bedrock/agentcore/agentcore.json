@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "MultiBedrock",
+  "version": 1,
+  "managedBy": "CDK",
+  "tags": {
+    "agentcore:project-name": "MultiBedrock"
+  },
+  "runtimes": [
+    {
+      "name": "orchestrator",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "agents/orchestrator/",
+      "runtimeVersion": "PYTHON_3_12",
+      "networkMode": "PUBLIC",
+      "protocol": "A2A"
+    },
+    {
+      "name": "researcher",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "agents/researcher/",
+      "runtimeVersion": "PYTHON_3_12",
+      "networkMode": "PUBLIC",
+      "protocol": "A2A"
+    },
+    {
+      "name": "judge",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "agents/judge/",
+      "runtimeVersion": "PYTHON_3_12",
+      "networkMode": "PUBLIC",
+      "protocol": "A2A"
+    },
+    {
+      "name": "content_builder",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "agents/content_builder/",
+      "runtimeVersion": "PYTHON_3_12",
+      "networkMode": "PUBLIC",
+      "protocol": "A2A"
+    }
+  ],
+  "memories": [],
+  "credentials": [
+    {
+      "authorizerType": "ApiKeyCredentialProvider",
+      "name": "GeminiApiKey"
+    }
+  ],
+  "evaluators": [],
+  "onlineEvalConfigs": [],
+  "agentCoreGateways": [],
+  "policyEngines": [],
+  "configBundles": [],
+  "abTests": [],
+  "httpGateways": []
+}
