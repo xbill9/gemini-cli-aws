@@ -1,0 +1,15 @@
+  1. Via AgentCore CLI (Recommended)
+  From the project root, use the agentcore CLI to interact with the deployed agent:
+
+   1 cd bedrocksre
+   2 agentcore invoke "What is the capital of France?"
+
+  2. Via Standalone Demo Script
+  I've created a demo_launcher.py script that wraps the invocation for you:
+
+   1 python demo_launcher.py "How can you help me with AWS?"
+
+  3. Via HTTP (JSON-RPC / MCP)
+  The exposed Gateway uses the Model Context Protocol (MCP). You can send a standard JSON-RPC initialize and tools/list request to the endpoint to
+  discover its capabilities, or use an MCP-compatible client to connect to it.
+

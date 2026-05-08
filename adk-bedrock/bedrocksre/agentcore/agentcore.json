@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "bedrocksre",
+  "version": 1,
+  "managedBy": "CDK",
+  "tags": {
+    "agentcore:created-by": "agentcore-cli",
+    "agentcore:project-name": "bedrocksre"
+  },
+  "runtimes": [
+    {
+      "name": "bedrocksre",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "app/bedrocksre/",
+      "runtimeVersion": "PYTHON_3_14",
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP"
+    }
+  ],
+  "memories": [],
+  "credentials": [],
+  "evaluators": [],
+  "onlineEvalConfigs": [],
+  "agentCoreGateways": [
+    {
+      "name": "bedrocksregateway",
+      "description": "Gateway for bedrocksregateway",
+      "targets": [],
+      "authorizerType": "NONE",
+      "enableSemanticSearch": true,
+      "exceptionLevel": "NONE"
+    }
+  ],
+  "policyEngines": [],
+  "configBundles": [],
+  "abTests": [],
+  "httpGateways": [
+    {
+      "name": "bedrocksre-endpoint",
+      "description": "Standard HTTP endpoint for bedrocksre",
+      "runtimeRef": "bedrocksre"
+    }
+  ]
+}

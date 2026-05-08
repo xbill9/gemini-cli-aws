@@ -1,0 +1,9 @@
+litellm-0.1.202.dist-info/INSTALLER,sha256=5hhM4Q4mYTT9z6QB6PGpUAW81PGNFrYrdXMj4oM_6ak,2
+litellm-0.1.202.dist-info/LICENSE,sha256=vtsBtS3vhTH5wpS2mlM6_Xh9AHbzy5mRTVebeaXnfZ0,1065
+litellm-0.1.202.dist-info/METADATA,sha256=3QKF1OJI9ssXmBCnxDh_cysrbNSjHbBJUR0CHwfU8y8,202
+litellm-0.1.202.dist-info/RECORD,,
+litellm-0.1.202.dist-info/REQUESTED,sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU,0
+litellm-0.1.202.dist-info/WHEEL,sha256=AtBG6SXL3KF_v0NxLf0ehyVOh0cold-JbJYXNGorC6Q,92
+litellm-0.1.202.dist-info/top_level.txt,sha256=ZCeC9K6c1bIOmlTjK5kvrOjg0btXMRon43IxOv9n6F0,8
+litellm/__init__.py,sha256=MUnCyPP2EKE1cR70-eo7YJjB8zEPwl0hifcbLV310GU,58
+litellm/main.py,sha256=t4MfXSpME-dt52EWCl4NVGBBwhigVEVdRkTm6J24MBM,4442

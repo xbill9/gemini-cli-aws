@@ -1,0 +1,35 @@
+{
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "bedrocksre": {
+            "runtimeId": "bedrocksre_bedrocksre-SXr42846zR",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:106059658660:runtime/bedrocksre_bedrocksre-SXr42846zR",
+            "roleArn": "arn:aws:iam::106059658660:role/AgentCore-bedrocksre-defa-ApplicationAgentBedrocksr-eccPvVXlbAaz"
+          }
+        },
+        "mcp": {
+          "gateways": {
+            "bedrocksregateway": {
+              "gatewayId": "bedrocksre-bedrocksregateway-9oixxpzbc1",
+              "gatewayArn": "arn:aws:bedrock-agentcore:us-east-1:106059658660:gateway/bedrocksre-bedrocksregateway-9oixxpzbc1",
+              "gatewayUrl": "https://bedrocksre-bedrocksregateway-9oixxpzbc1.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp"
+            }
+          }
+        },
+        "httpGateways": {
+          "bedrocksre-endpoint": {
+            "gatewayId": "bedrocksre-bedrocksre-endpoint-mq8xpfpns0",
+            "gatewayArn": "arn:aws:bedrock-agentcore:us-east-1:106059658660:gateway/bedrocksre-bedrocksre-endpoint-mq8xpfpns0",
+            "gatewayUrl": "https://bedrocksre-bedrocksre-endpoint-mq8xpfpns0.gateway.bedrock-agentcore.us-east-1.amazonaws.com",
+            "targetId": "UAMQBWPEKT",
+            "roleArn": "arn:aws:iam::106059658660:role/AgentCore-bedrocksre-HttpGwbedrocksre-endpoint-56b53de6",
+            "roleCreatedByCli": true
+          }
+        },
+        "stackName": "AgentCore-bedrocksre-default"
+      }
+    }
+  }
+}

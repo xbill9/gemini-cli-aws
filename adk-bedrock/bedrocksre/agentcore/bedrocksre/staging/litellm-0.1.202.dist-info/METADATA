@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: litellm
+Version: 0.1.202
+Summary: Library to easily interface with LLM API providers
+Author: Ishaan Jaffer
+License-File: LICENSE
+Requires-Dist: openai
+Requires-Dist: cohere
+
