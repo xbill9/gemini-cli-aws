@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "mcp-ebs-python-aws": {
+      "httpUrl": "http://mcp-server-eb-env.eba-ce3smmqd.us-east-1.elasticbeanstalk.com/mcp/"
+    }
+  }
+}
