@@ -1,0 +1,16 @@
+{
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "adk_studio": {
+            "runtimeId": "AdkBedrockPythonAws_adk_studio-9SpNDE6ls8",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:106059658660:runtime/AdkBedrockPythonAws_adk_studio-9SpNDE6ls8",
+            "roleArn": "arn:aws:iam::106059658660:role/AgentCore-AdkBedrockPytho-ApplicationAgentAdkStudio-yjsHRRKPsB0m"
+          }
+        },
+        "stackName": "AgentCore-AdkBedrockPythonAws-default"
+      }
+    }
+  }
+}

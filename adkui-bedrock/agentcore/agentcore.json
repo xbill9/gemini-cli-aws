@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "AdkBedrockPythonAws",
+  "version": 1,
+  "managedBy": "CDK",
+  "tags": {
+    "agentcore:project-name": "AdkBedrockPythonAws"
+  },
+  "runtimes": [
+    {
+      "name": "adk_studio",
+      "build": "CodeZip",
+      "entrypoint": "fast_api_app.py",
+      "codeLocation": "app/",
+      "runtimeVersion": "PYTHON_3_12",
+      "networkMode": "PUBLIC",
+      "instrumentation": {
+        "enableOtel": false
+      },
+      "protocol": "HTTP"
+    }
+  ],
+  "memories": [],
+  "credentials": [],
+  "evaluators": [],
+  "onlineEvalConfigs": [],
+  "agentCoreGateways": [],
+  "policyEngines": [],
+  "configBundles": [],
+  "abTests": [],
+  "httpGateways": []
+}
