@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mcp-apprunner-rust-aws": {
+      "httpUrl": "https://edqxtitpbt.us-east-1.awsapprunner.com/mcp"
+    },
+    "local-rust": {
+      "httpUrl": "http://127.0.0.1:8080/mcp"
+    }
+  }
+}
