@@ -1,0 +1,11 @@
+ {
+    "mcpServers": {
+    "aws-lightsail-rust": {
+      "httpUrl": "https://mcp-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com/mcp"
+    },
+    "local-rust": {
+      "httpUrl": "http://127.0.0.1:8080/mcp"
+    }
+  }
+}
+
