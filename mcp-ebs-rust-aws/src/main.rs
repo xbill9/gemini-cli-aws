@@ -96,6 +96,7 @@ async fn main() -> Result<()> {
 
     // Add a specific health check route
     let app = axum::Router::new()
+        .route("/", axum::routing::get(|| async { "ok" }))
         .route("/health", axum::routing::get(|| async { "ok" }))
         .fallback_service(service);
 

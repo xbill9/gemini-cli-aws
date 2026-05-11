@@ -13,7 +13,7 @@ IMAGE_NAME := mcp-server-image
 # AWS Elastic Beanstalk Configuration
 AWS_REGION ?= us-east-1
 EB_APP_NAME ?= $(SERVICE_NAME)
-EB_ENV_NAME ?= $(SERVICE_NAME)-env
+EB_ENV_NAME ?= $(SERVICE_NAME)-env-v2
 # Try to find an existing EB S3 bucket, otherwise it will be created in eb-init
 S3_BUCKET ?= $(shell aws s3 ls 2>/dev/null | grep elasticbeanstalk-$(AWS_REGION) | awk '{print $$3}' | head -n 1)
 EB_SOLUTION_STACK ?= 64bit Amazon Linux 2023 v4.12.3 running Docker
@@ -122,9 +122,9 @@ eb-package:
 	@echo "Creating source bundle (source.zip)..."
 	@git archive -o source.zip HEAD .
 
-deploy: eb-package eb-deploy
+deploy: dist-deploy
 
-eb-deploy:
+eb-deploy: eb-package
 	@echo "Deploying to Elastic Beanstalk..."
 	@TIMESTAMP=$$(date +%Y%m%d%H%M%S); \
 	VERSION_LABEL="v$$TIMESTAMP"; \
@@ -135,12 +135,46 @@ eb-deploy:
 		--version-label $$VERSION_LABEL --source-bundle S3Bucket=$$BUCKET,S3Key=$(EB_APP_NAME)/$$VERSION_LABEL.zip --region $(AWS_REGION); \
 	aws elasticbeanstalk update-environment --environment-name $(EB_ENV_NAME) --version-label $$VERSION_LABEL --region $(AWS_REGION) || \
 	aws elasticbeanstalk create-environment --application-name $(EB_APP_NAME) --environment-name $(EB_ENV_NAME) \
-		--version-label $$VERSION_LABEL --solution-stack-name "$(EB_SOLUTION_STACK)" --region $(AWS_REGION)
+		--version-label $$VERSION_LABEL --solution-stack-name "$(EB_SOLUTION_STACK)" --region $(AWS_REGION) \
+		--option-settings \
+			Namespace=aws:autoscaling:launchconfiguration,OptionName=IamInstanceProfile,Value=aws-elasticbeanstalk-ec2-role \
+			Namespace=aws:elasticbeanstalk:environment,OptionName=EnvironmentType,Value=SingleInstance \
+			Namespace=aws:elasticbeanstalk:environment,OptionName=ServiceRole,Value=aws-elasticbeanstalk-service-role
+
+dist-package: release
+	@echo "Creating dist bundle (dist.zip)..."
+	@mkdir -p dist
+	@cp target/release/$(SERVICE_NAME) dist/
+	@# Dockerfile and Dockerrun.aws.json should already be in dist/ or created manually
+	@cd dist && zip -r ../dist.zip .
+
+dist-deploy: dist-package
+	@echo "Deploying dist.zip to Elastic Beanstalk..."
+	@TIMESTAMP=$$(date +%Y%m%d%H%M%S); \
+	VERSION_LABEL="dist-v$$TIMESTAMP"; \
+	BUCKET=$$(if [ -n "$(S3_BUCKET)" ]; then echo "$(S3_BUCKET)"; else aws s3 ls | grep elasticbeanstalk-$(AWS_REGION) | awk '{print $$3}' | head -n 1; fi); \
+	if [ -z "$$BUCKET" ]; then echo "Error: S3 bucket not found. Run 'make eb-init' first."; exit 1; fi; \
+	aws s3 cp dist.zip s3://$$BUCKET/$(EB_APP_NAME)/$$VERSION_LABEL.zip --region $(AWS_REGION); \
+	aws elasticbeanstalk create-application-version --application-name $(EB_APP_NAME) \
+		--version-label $$VERSION_LABEL --source-bundle S3Bucket=$$BUCKET,S3Key=$(EB_APP_NAME)/$$VERSION_LABEL.zip --region $(AWS_REGION); \
+	aws elasticbeanstalk update-environment --environment-name $(EB_ENV_NAME) --version-label $$VERSION_LABEL --region $(AWS_REGION) || \
+	aws elasticbeanstalk create-environment --application-name $(EB_APP_NAME) --environment-name $(EB_ENV_NAME) \
+		--version-label $$VERSION_LABEL --solution-stack-name "$(EB_SOLUTION_STACK)" --region $(AWS_REGION) \
+		--option-settings \
+			Namespace=aws:autoscaling:launchconfiguration,OptionName=IamInstanceProfile,Value=aws-elasticbeanstalk-ec2-role \
+			Namespace=aws:elasticbeanstalk:environment,OptionName=EnvironmentType,Value=SingleInstance \
+			Namespace=aws:elasticbeanstalk:environment,OptionName=ServiceRole,Value=aws-elasticbeanstalk-service-role \
+			Namespace=aws:elasticbeanstalk:application:environment,OptionName=PORT,Value=8080 \
+			Namespace=aws:elasticbeanstalk:application:environment,OptionName=ALLOWED_HOSTS,Value="*"
 
 eb-status:
 	@echo "Checking Elastic Beanstalk status for $(EB_ENV_NAME)..."
 	@aws elasticbeanstalk describe-environments --environment-names $(EB_ENV_NAME) --region $(AWS_REGION) \
 		--query 'Environments[0].{Status:Status, Health:Health, URL:CNAME}' --output table
+
+endpoint: eb-endpoint
+
+status: eb-status
 
 eb-endpoint:
 	@echo "Elastic Beanstalk public endpoint:"

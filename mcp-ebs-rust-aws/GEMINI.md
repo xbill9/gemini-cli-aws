@@ -26,7 +26,8 @@ Follow Rust best practices and idiomatic patterns (2024 edition).
 - `make format`: Formats the code.
 - `make start`/`stop`/`status`: Manage background server process.
 - `make eb-init`: Initialize AWS Elastic Beanstalk application and environment.
-- `make deploy`: Deploys to Amazon Elastic Beanstalk.
+- `make deploy`: (Recommended) Packages the pre-built binary and deploys to EBS (faster, avoids timeouts).
+- `make eb-deploy`: Deploys source code to EBS (builds on instance, might timeout on small instances).
 - `make eb-status`: Check deployment status.
 - `make eb-endpoint`: Get the public URL.
 
@@ -35,8 +36,11 @@ Follow Rust best practices and idiomatic patterns (2024 edition).
 - **Entry Point:** `src/main.rs` defines the `HelloWorld` struct which implements `ServerHandler`.
 - **Streaming HTTP:** The server uses `StreamableHttpService` from `rmcp` to handle long-lived HTTP connections for MCP sessions.
 - **Health Check:** A `/health` endpoint is provided for EB health probes.
-- **Environment Variables:** `PORT` determines the listening port.
+- **Environment Variables:**
+    - `PORT`: Determines the listening port (default: 8080).
+    - `ALLOWED_HOSTS`: Comma-separated list of allowed hostnames for DNS rebinding protection (e.g., `localhost,*.elasticbeanstalk.com`). Use `*` to allow all (not recommended for production).
 - **Graceful Shutdown:** Implemented using `tokio::signal`.
+- **Status Aliases:** `make status` is an alias for `make eb-status`. Use `make local-status` (if added) or check `server.pid` for local process status.
 
 ## Documentation References
 

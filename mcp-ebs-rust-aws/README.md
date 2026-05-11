@@ -1,6 +1,6 @@
-# mcp-https-rust
+# mcp-ebs-rust-aws
 
-A Rust-based Model Context Protocol (MCP) server designed for deployment on Google Cloud Run, utilizing streaming HTTP.
+A Rust-based Model Context Protocol (MCP) server designed for deployment on Amazon Elastic Beanstalk (EBS), utilizing streaming HTTP.
 
 ## Overview
 
@@ -10,8 +10,22 @@ This project implements an MCP server using the [`rmcp`](https://github.com/mode
 
 - **MCP Tooling**: Implements a `greeting` tool.
 - **Streaming HTTP**: Uses `rmcp`'s `StreamableHttpService` for efficient JSON-RPC over HTTP.
-- **Cloud Native**: Pre-configured for Google Cloud Run with a `/health` check endpoint and Docker support.
+- **AWS Native**: Pre-configured for Amazon Elastic Beanstalk with a `/health` check endpoint and Docker support.
 - **Graceful Shutdown**: Handles SIGINT and SIGTERM for clean exits.
+
+## Tools
+
+The following tools are provided by this MCP server:
+
+### `greeting`
+
+Echoes back a message with a friendly greeting.
+
+**Parameters:**
+- `message` (string, required): The message to echo back.
+
+**Example Response:**
+`"Hello World MCP! <message>"`
 
 ## Getting Started
 
@@ -19,7 +33,7 @@ This project implements an MCP server using the [`rmcp`](https://github.com/mode
 
 - [Rust Toolchain](https://www.rust-lang.org/tools/install) (2024 edition)
 - [Docker](https://docs.docker.com/get-docker/) (for containerization)
-- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (for deployment)
+- [AWS CLI](https://aws.amazon.com/cli/) (for deployment)
 
 ### Build
 
@@ -44,6 +58,15 @@ cargo run --release
 The server will be available at `http://localhost:8080`.
 You can check the health at `http://localhost:8080/health`.
 
+### Configuration
+
+The server can be configured using the following environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | The port to listen on. | `8080` |
+| `ALLOWED_HOSTS` | Comma-separated list of allowed hostnames (e.g., `localhost,my-app.aws.com`). | `0.0.0.0,localhost,127.0.0.1` |
+
 ### Development Targets
 
 The `Makefile` provides several useful targets:
@@ -53,17 +76,27 @@ The `Makefile` provides several useful targets:
 - `make fmt`: Check code formatting.
 - `make start`: Start the server in the background (logs to `server.log`).
 - `make stop`: Stop the background server.
-- `make status`: Check the status of the background server.
+- `make status`: Check the deployment status (alias for `eb-status`).
 
 ## Deployment
 
-To deploy the application to Google Cloud Run using Google Cloud Build:
+To deploy the application to Amazon Elastic Beanstalk:
 
 ```bash
+# Initialize EB application and S3 bucket (if not already done)
+make eb-init
+
+# Package and deploy
 make deploy
+
+# Check status
+make eb-status
+
+# Get public endpoint
+make eb-endpoint
 ```
 
-This will build the Docker image and deploy it to the configured service.
+This will package the source code into a `source.zip` and deploy it to the configured Elastic Beanstalk environment.
 
 ## Protocol Details
 
