@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2024"
 description = "Hello World streaming http MCP"
 license = "MIT"
-repository = "https://github.com/xbill9/mcp-adk-rust"
+repository = "https://github.com/xbill9/gemini-cli-aws"
 
 [dependencies]
 anyhow = "1.0.102"
