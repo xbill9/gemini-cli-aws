@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mcp-fargate-rust-aws": {
+      "httpUrl": "http://35.175.201.9:8080/mcp"
+    },
+    "local-rust": {
+      "httpUrl": "http://127.0.0.1:8080/mcp"
+    }
+  }
+}

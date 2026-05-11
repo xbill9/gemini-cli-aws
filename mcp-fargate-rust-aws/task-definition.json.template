@@ -1,0 +1,42 @@
+{
+    "family": "{{TASK_FAMILY}}",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+        {
+            "name": "{{CONTAINER_NAME}}",
+            "image": "{{ECR_URI}}",
+            "portMappings": [
+                {
+                    "containerPort": 8080,
+                    "hostPort": 8080,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "PORT",
+                    "value": "8080"
+                },
+                {
+                    "name": "ALLOWED_HOSTS",
+                    "value": "*"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/{{TASK_FAMILY}}",
+                    "awslogs-region": "{{AWS_REGION}}",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "arn:aws:iam::{{AWS_ACCOUNT_ID}}:role/ecsTaskExecutionRole"
+}
