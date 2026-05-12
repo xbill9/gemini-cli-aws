@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "aws-lambda-rust": {
+      "httpUrl": "https://vry3auzzqvt7jigvdpy4xnkryq0fukjw.lambda-url.us-east-1.on.aws/mcp"
+    },
+    "local-rust": {
+      "httpUrl": "http://127.0.0.1:8080/mcp"
+    }
+  }
+}
