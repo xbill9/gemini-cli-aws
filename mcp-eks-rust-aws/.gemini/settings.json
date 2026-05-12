@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mcp-eks-rust-aws": {
+      "httpUrl": "http://aadf6b26ff7dc4c848e44c93dff53238-2077272563.us-east-1.elb.amazonaws.com/mcp"
+    },
+    "local-rust": {
+      "httpUrl": "http://127.0.0.1:8080/mcp"
+    }
+  }
+}
