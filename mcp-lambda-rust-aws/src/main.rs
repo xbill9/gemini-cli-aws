@@ -60,15 +60,6 @@ impl HelloWorld {
         format!("Hello World MCP! {}", message)
     }
 
-    /// Get a greeting from the server (matches Python example name)
-    #[tool(description = "Get a greeting from the server")]
-    async fn greet(
-        &self,
-        Parameters(GreetRequest { message }): Parameters<GreetRequest>,
-    ) -> String {
-        tracing::info!("Greeting (greet): {}", message);
-        format!("Hello, {}!", message)
-    }
 }
 
 #[tool_handler]
@@ -114,12 +105,15 @@ async fn main() -> Result<()> {
 
     // Configure allowed hosts for DNS rebinding protection
     let mut config = StreamableHttpServerConfig::default();
+    config.stateful_mode = false;
+    config.json_response = true;
+
     if let Ok(hosts_str) = std::env::var("ALLOWED_HOSTS") {
         tracing::info!("ALLOWED_HOSTS env set: {}", hosts_str);
         let hosts: Vec<String> = hosts_str.split(',').map(String::from).collect();
         if hosts.iter().any(|h| h == "*") {
             tracing::info!("Wildcard '*' detected in ALLOWED_HOSTS, disabling host check");
-            config.allowed_hosts = vec![];
+            config = config.disable_allowed_hosts();
         } else {
             config.allowed_hosts = hosts;
         }
@@ -202,7 +196,7 @@ mod tests {
         let request = GreetRequest {
             message: "Gemini".to_string(),
         };
-        let response = hello.greet(Parameters(request)).await;
-        assert_eq!(response, "Hello, Gemini!");
+        let response = hello.greeting(Parameters(request)).await;
+        assert_eq!(response, "Hello World MCP! Gemini");
     }
 }
